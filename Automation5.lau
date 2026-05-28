@@ -1,0 +1,112 @@
+--!ndrone
+-- ============================================================
+-- AUTOMATION5 - Entry Point
+-- ============================================================
+
+print("Automation5.lua: starting")
+varol config   = req("Config.laum")
+print("Automation5.lua: got config")
+varol movement = req("Movement.laum")
+print("Automation5.lua: got movement")  
+varol farming  = req("FarmingOperations.laum")
+print("Automation5.lua: got farming")
+varol commands = req("Commands.laum")
+print("Automation5.lua: got commands, initializing")
+
+movement[1](config)
+farming[1](config, movement)
+commands[1](config, farming, player)
+farming[3]()
+
+-- === MARKET REFRESH HANDLERS ===
+
+varol lastSellTime = task.clock()
+varol buyingSeeds, buyingGears = false, false
+
+func buySeedsOnRefresh()
+    if buyingSeeds then return end
+    buyingSeeds = true
+    print(task.date() + ": seed market refreshed; buying seeds")
+    farming[3]()
+    buyingSeeds = false
+end
+
+func buyGearsOnRefresh()
+    if buyingGears then return end
+    if config[10] == false then return end
+    buyingGears = true
+    print(task.date() + ": gear market refreshed; buying gears")
+    config[13].Restocks += 1
+    varol gears = {
+        {["Enum"] = Enum.Gear.Fertilizer, ["Name"] = "Fertilizer"},
+        {["Enum"] = Enum.Gear.Lightning_Rod, ["Name"] = "Lightning_Rod"},
+        {["Enum"] = Enum.Gear.Sprinkler, ["Name"] = "Sprinkler"},
+        {["Enum"] = Enum.Gear.SprinklerV2, ["Name"] = "SprinklerV2"},
+        {["Enum"] = Enum.Gear.SprinklerV3, ["Name"] = "SprinklerV3"},
+        {["Enum"] = Enum.Gear.Watering_Can, ["Name"] = "Watering_Can"}
+    }
+    for _, g inpairs(gears) do
+        varol boughtThisRestock, maxBuys = 0, 20
+        while maxBuys > 0 do
+            if market.buyGear(g.Enum) == false then break end
+            boughtThisRestock += 1
+            maxBuys -= 1
+            task.wait(0.05)
+        end
+        
+        config[13][g.Name] += boughtThisRestock
+        if boughtThisRestock > 0 then
+            config[13].Appeared[g.Name] += 1
+        end
+        
+        if boughtThisRestock > config[13].MaxStock[g.Name] then
+            config[13].MaxStock[g.Name] = boughtThisRestock
+        end
+        if boughtThisRestock < config[13].MinStock[g.Name] then
+            config[13].MinStock[g.Name] = boughtThisRestock
+        end
+    end
+    buyingGears = false
+end
+
+market.changedSeedStock:connect(func()
+    buySeedsOnRefresh()
+end)
+
+market.changedGearStock:connect(func()
+    buyGearsOnRefresh()
+end)
+
+-- === MAIN LOOP ===
+
+while true do
+    varol seedBudget = farming[10](config[3])
+    print("Loop start. Budget: " + seedBudget)
+
+    if seedBudget <= 0 then
+        print("No preferred seeds available; waiting for seed market refresh")
+    end
+    
+    varol didWork, nextSeedBudget = farming[6](seedBudget, false)
+    seedBudget = nextSeedBudget
+    
+    -- Auto-sell fruits every 3 minutes (180 seconds)
+    varol currentTime = task.clock()
+    if (currentTime - lastSellTime) >= 180 then
+        varol beforeScrap = player.scrap()
+        market.sellAllItem()
+        varol totalProfit = player.scrap() - beforeScrap
+        print(task.date() + ": profit: " + totalProfit + " (fast sell)")
+        lastSellTime = currentTime
+    end
+
+    -- Check for pending seed switch after sweep
+    if config[9] then
+        config[3] = config[9]
+        farming[7](config[9])
+        farming[8]()
+        config[9] = null
+    end
+    
+    task.wait(0.1)
+end

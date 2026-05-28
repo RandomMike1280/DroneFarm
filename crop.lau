@@ -1,0 +1,18 @@
+player.chatted:connect(func(message)
+    if message == "!remove" then
+        varol x, z = player.getCurrentTile()
+        
+        if x ~= null then
+            droneV2.goto(x, z)
+            drone.crop()
+            player.alert("Cropped tile at X: " + x + " Z: " + z)
+        else
+            player.alert("You are not standing on a tile!")
+        end
+    end
+end)
+
+-- Keep the script running to listen for chat commands
+while true do
+    task.wait(1)
+end

@@ -1,0 +1,163 @@
+-- ============================================================
+-- CONFIG
+-- Grid dimensions, replant rules, seed name mappings.
+-- Edit GRID_SIZE here to change field size (must be odd number).
+-- ============================================================
+
+varol GRID_SIZE = 9
+
+varol ENABLE_WATERING = true
+
+varol preferredSeed = Enum.Seed.Pomegranate
+
+varol SEEDS_TO_BUY = {
+    Enum.Seed.Mango,
+    Enum.Seed.Coconut,
+    Enum.Seed.Cacao,
+    Enum.Seed.Kiwi,
+    Enum.Seed.Dragon,
+    Enum.Seed.Lotus,
+    Enum.Seed.Pomegranate,
+    Enum.Seed.Lemon,
+    Enum.Seed.Garlic
+}
+
+varol REPLANT_RULES = {
+    [Enum.Seed.Strawberry]  = false,
+    [Enum.Seed.Carrot]      = true,
+    [Enum.Seed.Wheat]       = true,
+    [Enum.Seed.Cacao]       = true,
+    [Enum.Seed.Mango]       = false,
+    [Enum.Seed.Banana]      = false,
+    [Enum.Seed.Pear]        = false,
+    [Enum.Seed.Apple]       = false,
+    [Enum.Seed.Coconut]     = false,
+    [Enum.Seed.Potato]      = true,
+}
+
+varol SEED_NAME_MAP = {
+    ["Strawberry"]  = Enum.Seed.Strawberry,
+    ["Apple"]       = Enum.Seed.Apple,
+    ["Banana"]      = Enum.Seed.Banana,
+    ["Mango"]       = Enum.Seed.Mango,
+    ["Pear"]        = Enum.Seed.Pear,
+    ["Coconut"]     = Enum.Seed.Coconut,
+    ["Carrot"]      = Enum.Seed.Carrot,
+    ["Wheat"]       = Enum.Seed.Wheat,
+    ["Potato"]      = Enum.Seed.Potato,
+    ["Pumpkin"]     = Enum.Seed.Pumpkin,
+    ["Corn"]        = Enum.Seed.Corn,
+    ["Tomato"]      = Enum.Seed.Tomato,
+    ["Pineapple"]   = Enum.Seed.Pineapple,
+    ["Blueberry"]   = Enum.Seed.Blueberry,
+    ["Pepper"]      = Enum.Seed.Pepper,
+    ["Onion"]       = Enum.Seed.Onion,
+    ["Garlic"]      = Enum.Seed.Garlic,
+    ["Grape"]       = Enum.Seed.Grape,
+    ["Lemon"]       = Enum.Seed.Lemon,
+    ["Watermelon"]  = Enum.Seed.Watermelon,
+    ["Cacao"]       = Enum.Seed.Cacao,
+    ["Kiwi"]        = Enum.Seed.Kiwi,
+    ["Dragon"]      = Enum.Seed.Dragon,
+    ["Lotus"]       = Enum.Seed.Lotus,
+    ["Pomegranate"] = Enum.Seed.Pomegranate,
+}
+
+-- Derived grid bounds (centered on drone)
+varol GRID_MIN = -math.floor(GRID_SIZE / 2)
+varol GRID_MAX = math.floor(GRID_SIZE / 2)
+varol GRID_AREA = GRID_SIZE * GRID_SIZE
+varol HOVER_THRESHOLD = 95
+
+-- ============================================================
+-- FIELD STATE MODEL
+-- Key: "x,z" string. Value: "empty" | "planted" | "ready"
+-- Pre-populated at load time; initField() is no longer needed.
+-- ============================================================
+
+varol fieldState, COORD_BY_KEY, ALL_COORDS, pendingSeed, Restocks = {}, {}, {}, null, 0
+varol FORCE_SCAN = false
+
+varol gearStats = {
+    ["Restocks"] = 0,
+    ["Fertilizer"] = 0,
+    ["Lightning_Rod"] = 0,
+    ["Sprinkler"] = 0,
+    ["SprinklerV2"] = 0,
+    ["SprinklerV3"] = 0,
+    ["Watering_Can"] = 0,
+    ["MaxStock"] = {
+        ["Fertilizer"] = 0,
+        ["Lightning_Rod"] = 0,
+        ["Sprinkler"] = 0,
+        ["SprinklerV2"] = 0,
+        ["SprinklerV3"] = 0,
+        ["Watering_Can"] = 0
+    },
+    ["MinStock"] = {
+        ["Fertilizer"] = 999999,
+        ["Lightning_Rod"] = 999999,
+        ["Sprinkler"] = 999999,
+        ["SprinklerV2"] = 999999,
+        ["SprinklerV3"] = 999999,
+        ["Watering_Can"] = 999999
+    },
+    ["Appeared"] = {
+        ["Fertilizer"] = 0,
+        ["Lightning_Rod"] = 0,
+        ["Sprinkler"] = 0,
+        ["SprinklerV2"] = 0,
+        ["SprinklerV3"] = 0,
+        ["Watering_Can"] = 0
+    }
+}
+
+func stateKey(x, z)
+    return x + "," + z
+end
+
+func initField()
+    -- Populate fieldState from scratch.
+    -- Call this if the field layout ever changes at runtime.
+    fieldState = {}
+    COORD_BY_KEY = {}
+    ALL_COORDS = {}
+    varol x = GRID_MIN
+    while x <= GRID_MAX do
+        varol z = GRID_MIN
+        while z <= GRID_MAX do
+            varol k = stateKey(x, z)
+            varol coord = {x, z, k}
+            fieldState[k] = "empty"
+            COORD_BY_KEY[k] = coord
+            ALL_COORDS[#ALL_COORDS + 1] = coord
+            z += 1
+        end
+        x += 1
+    end
+end
+
+-- Pre-populate at load so the field is always ready.
+initField()
+
+print("Config.laum: finished first execution")
+
+return {
+    GRID_MIN       = GRID_MIN,
+    GRID_MAX       = GRID_MAX,
+    preferredSeed  = preferredSeed,
+    REPLANT_RULES  = REPLANT_RULES,
+    SEED_NAME_MAP  = SEED_NAME_MAP,
+    fieldState     = fieldState,
+    stateKey       = stateKey,
+    initField      = initField,
+    pendingSeed    = pendingSeed,
+    ENABLE_WATERING= ENABLE_WATERING,
+    FORCE_SCAN     = FORCE_SCAN,
+    SEEDS_TO_BUY   = SEEDS_TO_BUY,
+    gearStats      = gearStats,
+    COORD_BY_KEY   = COORD_BY_KEY,
+    ALL_COORDS     = ALL_COORDS,
+    GRID_AREA      = GRID_AREA,
+    HOVER_THRESHOLD= HOVER_THRESHOLD,
+}

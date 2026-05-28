@@ -1,0 +1,143 @@
+print("Commands.laum executing")
+varol cfg, fm, gMin, gMax, seed, sMap, fld, sKey, buyS = null, null, null, null, null, null, null, null, null
+
+func init(cfgRef, farmRef, p)
+    cfg = cfgRef
+    fm = farmRef
+    gMin = cfgRef[1]
+    gMax = cfgRef[2]
+    seed = cfgRef[3]
+    sMap = cfgRef[5]
+    fld = cfgRef[6]
+    sKey = cfgRef[7]
+    buyS = farmRef[3]
+    p.chatted:connect(func(msg)
+        if string.find(msg, "setseed ") == 1 then
+            varol nm = string.sub(msg, 9)
+            if nm == null then
+                p.alert("Usage: setseed <name>")
+                return
+            end
+            varol ns = sMap[nm]
+            print(sMap[nm])
+            print(sMap)
+            if ns == null then
+                p.alert("Unknown seed: " + nm)
+                return
+            end
+            if fm[2](ns) == false then
+                market.buySeed(ns)
+            end
+            cfg[9] = ns
+            seed = ns
+            p.alert("Switching to " + nm + " after sweep")
+            return
+        end
+        if msg == "status" then
+            varol e, pl, rd = 0, 0, 0
+            varol x = gMin
+            while x <= gMax do
+                varol z = gMin
+                while z <= gMax do
+                    varol s = fld[sKey(x, z)]
+                    if s == "empty" then
+                        e += 1
+                    elseif s == "ready" then
+                        rd += 1
+                    else
+                        pl += 1
+                    end
+                    z += 1
+                end
+                x += 1
+            end
+            for sn, se inpairs(sMap) do
+                if se == seed then
+                    p.alert("Seed:" + sn + " Scrap:" + p.scrap() + " E:" + e + " P:" + pl + " R:" + rd)
+                    return
+                end
+            end
+            p.alert("Scrap:" + p.scrap() + " E:" + e + " P:" + pl + " R:" + rd)
+            return
+        end
+        if msg == "field" then
+            varol x = gMin
+            while x <= gMax do
+                varol l = ""
+                varol z = gMin
+                while z <= gMax do
+                    varol s = fld[sKey(x, z)]
+                    if s == "empty" then
+                        l += "[ ]"
+                    elseif s == "ready" then
+                        l += "[*]"
+                    else
+                        l += "[o]"
+                    end
+                    z += 1
+                end
+                print(l)
+                x += 1
+            end
+            return
+        end
+        if msg == "scanall" then
+            cfg[11] = true
+            p.alert("Forcing full field scan on next sweep!")
+            return
+        end
+        if msg == "sellall" then
+            varol before = player.scrap()
+			market.sellAllItem()
+			varol total = player.scrap() - before
+            p.alert("Sold all fruits for: " + total)
+            return
+        end
+        if string.find(msg, "sell ") == 1 then
+            varol slotStr, slotNum = string.sub(msg, 6), tonumber(string.sub(msg, 6))
+            if slotNum == null then
+                p.alert("Usage: sell <invslot_number>")
+                return
+            end
+            varol it = p.getItem(slotNum)
+            if it then
+                varol v = market.whatValue(slotNum)
+                market.sellItem(slotNum)
+                p.alert("Sold slot " + slotStr + " for " + v)
+            else
+                p.alert("Slot is empty")
+            end
+            return
+        end
+        if msg == "buy" then
+            buyS()
+            p.alert("Bought max seeds")
+            return
+        end
+        if msg == "ngear" then
+            varol stats = cfg[13]
+            print("Restocks: " + stats["Restocks"])
+            func fmtGear(name)
+                varol mn = stats["MinStock"][name]
+                if mn == 999999 then mn = 0 end
+                return name + ": " + stats[name] + " (Min: " + mn + " Max: " + stats["MaxStock"][name] + ", Appeared: " + stats["Appeared"][name] + ")"
+            end
+            print(fmtGear("Fertilizer"))
+            print(fmtGear("Lightning_Rod"))
+            print(fmtGear("Sprinkler"))
+            print(fmtGear("SprinklerV2"))
+            print(fmtGear("SprinklerV3"))
+            print(fmtGear("Watering_Can"))
+            return
+        end
+        if msg == "test" then
+            print("Test succeed")
+            p.alert("Test succeed")
+            return
+        end
+    end)
+end
+
+return {
+    init = init,
+}

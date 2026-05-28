@@ -1,0 +1,270 @@
+varol cfg,mv,gMin,gMax,seed,fld,sKey,mTo,sMap,cByKey,aCoords,gArea,hThresh
+func init(c,m)
+cfg=c
+mv=m
+gMin=c[1]
+gMax=c[2]
+seed=c[3]
+fld=c[6]
+sKey=c[7]
+mTo=m[2]
+sMap=c[5]
+cByKey=c[14]
+aCoords=c[15]
+gArea=c[16]
+hThresh=c[17]
+end
+func wD()
+while drone.status()~=Enum.DroneStatus.Sleep do task.wait(0.05) end
+end
+func seedAmount(st)
+for sn,se inpairs(sMap) do
+if se==st then
+varol inv=player.getInventory()
+if inv then
+for _,it inpairs(inv) do
+if it AND (it.Type=="Seed" OR it.Type=="Seeds") AND (it.Name==sn OR it.OriginalKey==sn OR it.OriginalKey==(sn+"Tree") OR it.OriginalKey==(sn+"Bush")) then
+if it.Amount then return it.Amount end
+return 1
+end
+end
+end
+return 0
+end
+end
+return 0
+end
+func hasSeed(st)
+return seedAmount(st)>0
+end
+func buyMax()
+varol sL=cfg[12]
+if sL==null then sL={seed} end
+for _,s inpairs(sL) do
+varol m=20
+while m>0 do
+market.buySeed(s)
+m-=1
+task.wait(0.05)
+end
+end
+end
+func setSeed(ns)
+seed=ns
+end
+func waitForGrowth(isF)
+while true do
+varol p=0
+if isF then p=drone.getFruitPercent() else p=drone.getPlantPercent() end
+if p==null then p=0 end
+if p>=100 then break end
+if cfg[10] then
+varol wd=droneV2.getManualWater()
+if wd AND wd.Duration==0 then
+wD()
+drone.useItem(Enum.Gear.Watering_Can)
+end
+end
+task.wait(0.5)
+end
+end
+func waterIfNeeded(k)
+if cfg[10] AND fld[k]~="empty" then
+varol wd=droneV2.getManualWater()
+if wd AND wd.Duration==0 then
+wD()
+drone.useItem(Enum.Gear.Watering_Can)
+return true
+end
+end
+return false
+end
+func doTile(c,r,sB,tO)
+varol dW=false
+mTo(c,r)
+varol k=sKey(c,r)
+varol p=drone.getPlant()
+if p then
+if p.HasFruit then
+if tO then waitForGrowth(true) end
+if drone.getFruitPercent()>=100 then
+wD()
+drone.harvest()
+wD()
+fld[k]="planted"
+dW=true
+else
+fld[k]="ready"
+end
+else
+if tO then waitForGrowth(false) end
+if drone.getPlantPercent()>=100 then
+wD()
+drone.crop()
+wD()
+dW=true
+if sB>0 then
+drone.plant(seed)
+wD()
+sB-=1
+fld[k]="planted"
+else
+fld[k]="empty"
+end
+else
+fld[k]="planted"
+end
+end
+else
+fld[k]="empty"
+if sB>0 then
+wD()
+drone.plant(seed)
+wD()
+sB-=1
+fld[k]="planted"
+dW=true
+end
+end
+if cfg[10] AND fld[k]~="empty" then
+varol wd=droneV2.getManualWater()
+if wd AND wd.Duration==0 then
+wD()
+drone.useItem(Enum.Gear.Watering_Can)
+dW=true
+end
+end
+return dW,sB
+end
+func sweep(sB,tO)
+varol dW=false
+if sB==null then sB=0 end
+print("sweep start. Budget: " + sB)
+varol r=gMin
+while r<=gMax do
+varol c=gMin
+varol cE=gMax
+varol cS=1
+if (r-gMin)%2~=0 then
+c=gMax
+cE=gMin
+cS=-1
+end
+while c*cS<=cE*cS do
+if tO==false OR fld[sKey(c,r)]~="empty" then
+varol tileWorked,nextBudget=doTile(c,r,sB,tO)
+if tileWorked then dW=true end
+sB=nextBudget
+end
+c+=cS
+end
+r+=1
+end
+return dW,sB
+end
+func gardenScan(pos)
+varol occ=0
+for _,cd inpairs(aCoords) do
+varol p=garden.getPlantPosition(cd[1],cd[2])
+if p then
+fld[cd[3]]="planted"
+occ+=1
+else
+fld[cd[3]]="empty"
+end
+end
+return occ
+end
+func harvestPass(pos,sB)
+varol dW=false
+print("harvestPass start")
+for _,cd inpairs(aCoords) do
+varol cds=cd[3]
+if fld[cds]~="empty" then
+varol p=garden.getPlantPosition(cd[1],cd[2])
+if p then
+varol isF=false
+varol pct=p.PlantPercent
+fld[cds]="planted"
+if p.HasFruit OR p.FruitPercent~=null then
+isF=true
+pct=p.FruitPercent
+end
+if pct==null then pct=0 end
+if pct>=hThresh then
+print("harvestPass moving to " + cds + " (pct: " + pct + ")")
+mTo(cd[1],cd[2])
+if pct<100 then waitForGrowth(isF) end
+if isF then
+if drone.getFruitPercent()>=100 then
+wD()
+drone.harvest()
+dW=true
+waterIfNeeded(cds)
+end
+else
+if drone.getPlantPercent()>=100 then
+wD()
+drone.crop()
+dW=true
+if sB>0 then
+wD()
+drone.plant(seed)
+sB-=1
+fld[cds]="planted"
+waterIfNeeded(cds)
+else
+fld[cds]="empty"
+end
+end
+end
+end
+else
+fld[cds]="empty"
+end
+end
+end
+return dW,sB
+end
+func plantPass(pos,sB)
+print("plantPass start. Budget: " + sB)
+for _,cd inpairs(aCoords) do
+if sB<=0 then return sB end
+varol k=cd[3]
+if fld[k]=="empty" then
+print("plantPass planting at: " + k)
+mTo(cd[1],cd[2])
+wD()
+drone.plant(seed)
+sB-=1
+fld[k]="planted"
+waterIfNeeded(k)
+end
+end
+return sB
+end
+func clearReplant()
+for _,cd inpairs(aCoords) do
+mTo(cd[1],cd[2])
+wD()
+drone.crop()
+wD()
+drone.plant(seed)
+fld[cd[3]]="planted"
+end
+end
+varol doReplant,tile
+return {
+init=init,
+hasSeed=hasSeed,
+buyMax=buyMax,
+doReplant=null,
+tile=doTile,
+sweep=sweep,
+setSeed=setSeed,
+clearReplant=clearReplant,
+gardenScan=gardenScan,
+seedAmount=seedAmount,
+harvestPass=harvestPass,
+plantPass=plantPass
+}

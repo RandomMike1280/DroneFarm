@@ -1,0 +1,25 @@
+-- ============================================================
+-- MOVEMENT
+-- Grid-relative movement helpers.
+-- moveTo(tx, tz) moves the drone to absolute field coordinates.
+-- ============================================================
+
+-- [H2] Instrumentation: detect if this file is auto-executed
+print("Movement.laum executing")
+
+varol cfg = null
+
+func init(cfgRef)
+    cfg = cfgRef
+end
+
+func moveTo(tx, tz)
+    while drone.status() ~= Enum.DroneStatus.Sleep do task.wait(0.05) end
+    droneV2.goto(tx, tz)
+    while drone.status() ~= Enum.DroneStatus.Sleep do task.wait(0.05) end
+end
+
+return {
+    init    = init,
+    moveTo  = moveTo,
+}
