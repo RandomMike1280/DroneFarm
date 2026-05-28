@@ -92,7 +92,7 @@ while true do
     
     -- Auto-sell fruits every 3 minutes (180 seconds)
     varol currentTime = task.clock()
-    if (currentTime - lastSellTime) >= 180 then
+    if config[18] == false AND (currentTime - lastSellTime) >= 180 then
         varol beforeScrap = player.scrap()
         market.sellAllItem()
         varol totalProfit = player.scrap() - beforeScrap

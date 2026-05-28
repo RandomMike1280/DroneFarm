@@ -7,6 +7,8 @@
 varol GRID_SIZE = 9
 
 varol ENABLE_WATERING = true
+varol AUTO_SELL_ENABLED = false
+varol AUTO_SELL_INTERVAL = 1
 
 varol preferredSeed = Enum.Seed.Pomegranate
 
@@ -160,4 +162,6 @@ return {
     ALL_COORDS     = ALL_COORDS,
     GRID_AREA      = GRID_AREA,
     HOVER_THRESHOLD= HOVER_THRESHOLD,
+    AUTO_SELL_ENABLED = AUTO_SELL_ENABLED,
+    AUTO_SELL_INTERVAL= AUTO_SELL_INTERVAL,
 }

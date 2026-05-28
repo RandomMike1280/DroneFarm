@@ -1,5 +1,14 @@
-print("Commands.laum executing")
-varol cfg, fm, gMin, gMax, seed, sMap, fld, sKey, buyS = null, null, null, null, null, null, null, null, null
+varol cfg, fm, gMin, gMax, seed, sMap, fld, sKey, buyS, aSell = null, null, null, null, null, null, null, null, null, false
+
+func autoSellLoop()
+    if aSell then return end
+    aSell = true
+    while cfg[18] do
+        market.sellAllItem()
+        task.wait(cfg[19])
+    end
+    aSell = false
+end
 
 func init(cfgRef, farmRef, p)
     cfg = cfgRef
@@ -14,23 +23,13 @@ func init(cfgRef, farmRef, p)
     p.chatted:connect(func(msg)
         if string.find(msg, "setseed ") == 1 then
             varol nm = string.sub(msg, 9)
-            if nm == null then
-                p.alert("Usage: setseed <name>")
-                return
-            end
+            if nm == null then return p.alert("setseed <name>") end
             varol ns = sMap[nm]
-            print(sMap[nm])
-            print(sMap)
-            if ns == null then
-                p.alert("Unknown seed: " + nm)
-                return
-            end
-            if fm[2](ns) == false then
-                market.buySeed(ns)
-            end
+            if ns == null then return p.alert("Bad seed: " + nm) end
+            if fm[2](ns) == false then market.buySeed(ns) end
             cfg[9] = ns
             seed = ns
-            p.alert("Switching to " + nm + " after sweep")
+            p.alert("Seed -> " + nm)
             return
         end
         if msg == "status" then
@@ -53,12 +52,10 @@ func init(cfgRef, farmRef, p)
             end
             for sn, se inpairs(sMap) do
                 if se == seed then
-                    p.alert("Seed:" + sn + " Scrap:" + p.scrap() + " E:" + e + " P:" + pl + " R:" + rd)
-                    return
+                    return p.alert("Seed:" + sn + " Scrap:" + p.scrap() + " E:" + e + " P:" + pl + " R:" + rd)
                 end
             end
-            p.alert("Scrap:" + p.scrap() + " E:" + e + " P:" + pl + " R:" + rd)
-            return
+            return p.alert("Scrap:" + p.scrap() + " E:" + e + " P:" + pl + " R:" + rd)
         end
         if msg == "field" then
             varol x = gMin
@@ -83,22 +80,41 @@ func init(cfgRef, farmRef, p)
         end
         if msg == "scanall" then
             cfg[11] = true
-            p.alert("Forcing full field scan on next sweep!")
-            return
+            return p.alert("Scan forced")
         end
         if msg == "sellall" then
             varol before = player.scrap()
 			market.sellAllItem()
 			varol total = player.scrap() - before
-            p.alert("Sold all fruits for: " + total)
+            return p.alert("Sold: " + total)
+        end
+        if msg == "autosell on" then
+            if cfg[18] then
+                return p.alert("Autosell on")
+            end
+            cfg[18] = true
+            p.alert("Autosell on")
+            autoSellLoop()
+            return
+        end
+        if msg == "autosell off" then
+            cfg[18] = false
+            return p.alert("Autosell off")
+        end
+        if msg == "autosell" then
+            if cfg[18] then
+                cfg[18] = false
+                p.alert("Autosell off")
+            else
+                cfg[18] = true
+                p.alert("Autosell on")
+                autoSellLoop()
+            end
             return
         end
         if string.find(msg, "sell ") == 1 then
             varol slotStr, slotNum = string.sub(msg, 6), tonumber(string.sub(msg, 6))
-            if slotNum == null then
-                p.alert("Usage: sell <invslot_number>")
-                return
-            end
+            if slotNum == null then return p.alert("sell <slot>") end
             varol it = p.getItem(slotNum)
             if it then
                 varol v = market.whatValue(slotNum)
@@ -111,33 +127,22 @@ func init(cfgRef, farmRef, p)
         end
         if msg == "buy" then
             buyS()
-            p.alert("Bought max seeds")
-            return
+            return p.alert("Bought seeds")
         end
         if msg == "ngear" then
-            varol stats = cfg[13]
-            print("Restocks: " + stats["Restocks"])
-            func fmtGear(name)
-                varol mn = stats["MinStock"][name]
-                if mn == 999999 then mn = 0 end
-                return name + ": " + stats[name] + " (Min: " + mn + " Max: " + stats["MaxStock"][name] + ", Appeared: " + stats["Appeared"][name] + ")"
-            end
-            print(fmtGear("Fertilizer"))
-            print(fmtGear("Lightning_Rod"))
-            print(fmtGear("Sprinkler"))
-            print(fmtGear("SprinklerV2"))
-            print(fmtGear("SprinklerV3"))
-            print(fmtGear("Watering_Can"))
+            varol st = cfg[13]
+            print("Restocks: " + st["Restocks"])
+            print("Fertilizer: " + st["Fertilizer"])
+            print("Lightning_Rod: " + st["Lightning_Rod"])
+            print("Sprinkler: " + st["Sprinkler"])
+            print("SprinklerV2: " + st["SprinklerV2"])
+            print("SprinklerV3: " + st["SprinklerV3"])
+            print("Watering_Can: " + st["Watering_Can"])
             return
         end
         if msg == "test" then
-            print("Test succeed")
-            p.alert("Test succeed")
-            return
+            return p.alert("OK")
         end
     end)
 end
-
-return {
-    init = init,
-}
+return {init = init}
