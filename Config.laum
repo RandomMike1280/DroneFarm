@@ -1,14 +1,10 @@
--- ============================================================
--- CONFIG
--- Grid dimensions, replant rules, seed name mappings.
--- Edit GRID_SIZE here to change field size (must be odd number).
--- ============================================================
-
 varol GRID_SIZE = 9
 
-varol ENABLE_WATERING = true
+varol ENABLE_WATERING = false
 varol AUTO_SELL_ENABLED = false
 varol AUTO_SELL_INTERVAL = 1
+varol FULL_SCAN_EVERY = 5
+varol ENABLE_ACTIVE_SWEEP = true
 
 varol preferredSeed = Enum.Seed.Pomegranate
 
@@ -65,17 +61,10 @@ varol SEED_NAME_MAP = {
     ["Pomegranate"] = Enum.Seed.Pomegranate,
 }
 
--- Derived grid bounds (centered on drone)
 varol GRID_MIN = -math.floor(GRID_SIZE / 2)
 varol GRID_MAX = math.floor(GRID_SIZE / 2)
 varol GRID_AREA = GRID_SIZE * GRID_SIZE
 varol HOVER_THRESHOLD = 95
-
--- ============================================================
--- FIELD STATE MODEL
--- Key: "x,z" string. Value: "empty" | "planted" | "ready"
--- Pre-populated at load time; initField() is no longer needed.
--- ============================================================
 
 varol fieldState, COORD_BY_KEY, ALL_COORDS, pendingSeed, Restocks = {}, {}, {}, null, 0
 varol FORCE_SCAN = false
@@ -119,8 +108,6 @@ func stateKey(x, z)
 end
 
 func initField()
-    -- Populate fieldState from scratch.
-    -- Call this if the field layout ever changes at runtime.
     fieldState = {}
     COORD_BY_KEY = {}
     ALL_COORDS = {}
@@ -139,7 +126,6 @@ func initField()
     end
 end
 
--- Pre-populate at load so the field is always ready.
 initField()
 
 print("Config.laum: finished first execution")
@@ -164,4 +150,6 @@ return {
     HOVER_THRESHOLD= HOVER_THRESHOLD,
     AUTO_SELL_ENABLED = AUTO_SELL_ENABLED,
     AUTO_SELL_INTERVAL= AUTO_SELL_INTERVAL,
+    FULL_SCAN_EVERY = FULL_SCAN_EVERY,
+    ENABLE_ACTIVE_SWEEP = ENABLE_ACTIVE_SWEEP,
 }

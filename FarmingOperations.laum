@@ -86,20 +86,27 @@ varol k=sKey(c,r)
 varol p=drone.getPlant()
 if p then
 if p.HasFruit then
-if tO then waitForGrowth(true) end
-if drone.getFruitPercent()>=100 then
-wD()
+varol pct=drone.getFruitPercent()
+if pct==null then pct=0 end
+if tO AND pct>=hThresh AND pct<100 then
+waitForGrowth(true)
+pct=100
+end
+if pct>=100 then
 drone.harvest()
-wD()
 fld[k]="planted"
 dW=true
 else
 fld[k]="ready"
 end
 else
-if tO then waitForGrowth(false) end
-if drone.getPlantPercent()>=100 then
-wD()
+varol pct=drone.getPlantPercent()
+if pct==null then pct=0 end
+if tO AND pct>=hThresh AND pct<100 then
+waitForGrowth(false)
+pct=100
+end
+if pct>=100 then
 drone.crop()
 wD()
 dW=true
@@ -194,17 +201,18 @@ if pct==null then pct=0 end
 if pct>=hThresh then
 print("harvestPass moving to " + cds + " (pct: " + pct + ")")
 mTo(cd[1],cd[2])
-if pct<100 then waitForGrowth(isF) end
+if pct<100 then
+waitForGrowth(isF)
+pct=100
+end
 if isF then
-if drone.getFruitPercent()>=100 then
-wD()
+if pct>=100 then
 drone.harvest()
 dW=true
 waterIfNeeded(cds)
 end
 else
-if drone.getPlantPercent()>=100 then
-wD()
+if pct>=100 then
 drone.crop()
 dW=true
 if sB>0 then
@@ -253,6 +261,13 @@ drone.plant(seed)
 fld[cd[3]]="planted"
 end
 end
+func emptyCount()
+varol n=0
+for _,cd inpairs(aCoords) do
+if fld[cd[3]]=="empty" then n+=1 end
+end
+return n
+end
 varol doReplant,tile
 return {
 init=init,
@@ -266,5 +281,6 @@ clearReplant=clearReplant,
 gardenScan=gardenScan,
 seedAmount=seedAmount,
 harvestPass=harvestPass,
-plantPass=plantPass
+plantPass=plantPass,
+emptyCount=emptyCount
 }

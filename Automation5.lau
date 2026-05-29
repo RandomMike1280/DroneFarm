@@ -22,19 +22,30 @@ farming[3]()
 
 varol lastSellTime = task.clock()
 varol buyingSeeds, buyingGears = false, false
+varol passCount = 0
+
+cache.set("S", "F")
+cache.set("SS", "I")
+cache.set("GS", "I")
+cache.set("C", "")
+cache.set("M", "START")
 
 func buySeedsOnRefresh()
     if buyingSeeds then return end
     buyingSeeds = true
+    cache.set("SS", "B")
     print(task.date() + ": seed market refreshed; buying seeds")
     farming[3]()
+    cache.set("SS", "D")
+    cache.set("S", "P")
+    cache.set("M", "SEEDS")
     buyingSeeds = false
 end
 
 func buyGearsOnRefresh()
     if buyingGears then return end
-    if config[10] == false then return end
     buyingGears = true
+    cache.set("GS", "B")
     print(task.date() + ": gear market refreshed; buying gears")
     config[13].Restocks += 1
     varol gears = {
@@ -42,8 +53,7 @@ func buyGearsOnRefresh()
         {["Enum"] = Enum.Gear.Lightning_Rod, ["Name"] = "Lightning_Rod"},
         {["Enum"] = Enum.Gear.Sprinkler, ["Name"] = "Sprinkler"},
         {["Enum"] = Enum.Gear.SprinklerV2, ["Name"] = "SprinklerV2"},
-        {["Enum"] = Enum.Gear.SprinklerV3, ["Name"] = "SprinklerV3"},
-        {["Enum"] = Enum.Gear.Watering_Can, ["Name"] = "Watering_Can"}
+        {["Enum"] = Enum.Gear.SprinklerV3, ["Name"] = "SprinklerV3"}
     }
     for _, g inpairs(gears) do
         varol boughtThisRestock, maxBuys = 0, 20
@@ -66,6 +76,8 @@ func buyGearsOnRefresh()
             config[13].MinStock[g.Name] = boughtThisRestock
         end
     end
+    cache.set("GS", "D")
+    cache.set("M", "GEARS")
     buyingGears = false
 end
 
@@ -81,14 +93,48 @@ end)
 
 while true do
     varol seedBudget = farming[10](config[3])
-    print("Loop start. Budget: " + seedBudget)
+    varol st = cache.get("S")
+    if st == null then st = "F" end
+    if cache.get("C") == "SCAN" OR config[11] then
+        st = "F"
+        cache.set("C", "")
+        config[11] = false
+    end
+    print("Loop " + st + " Budget: " + seedBudget)
 
     if seedBudget <= 0 then
         print("No preferred seeds available; waiting for seed market refresh")
     end
     
-    varol didWork, nextSeedBudget = farming[6](seedBudget, false)
-    seedBudget = nextSeedBudget
+    if st == "P" then
+        if seedBudget > 0 then
+            seedBudget = farming[12](null, seedBudget)
+        end
+        cache.set("S", "A")
+        cache.set("M", "PLANT")
+    elseif st == "A" AND config[21] then
+        varol didWork, nextSeedBudget = farming[6](seedBudget, true)
+        seedBudget = nextSeedBudget
+        passCount += 1
+        if seedBudget > 0 AND farming[13]() > 0 then
+            cache.set("S", "P")
+        elseif passCount >= config[20] then
+            cache.set("S", "F")
+        else
+            cache.set("S", "A")
+        end
+        cache.set("M", "ACTIVE")
+    else
+        varol didWork, nextSeedBudget = farming[6](seedBudget, false)
+        seedBudget = nextSeedBudget
+        passCount = 0
+        if seedBudget > 0 AND farming[13]() > 0 then
+            cache.set("S", "P")
+        else
+            cache.set("S", "A")
+        end
+        cache.set("M", "FULL")
+    end
     
     -- Auto-sell fruits every 3 minutes (180 seconds)
     varol currentTime = task.clock()

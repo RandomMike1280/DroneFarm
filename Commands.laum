@@ -80,6 +80,7 @@ func init(cfgRef, farmRef, p)
         end
         if msg == "scanall" then
             cfg[11] = true
+            cache.set("C", "SCAN")
             return p.alert("Scan forced")
         end
         if msg == "sellall" then
@@ -132,17 +133,12 @@ func init(cfgRef, farmRef, p)
         if msg == "ngear" then
             varol st = cfg[13]
             print("Restocks: " + st["Restocks"])
-            print("Fertilizer: " + st["Fertilizer"])
-            print("Lightning_Rod: " + st["Lightning_Rod"])
-            print("Sprinkler: " + st["Sprinkler"])
-            print("SprinklerV2: " + st["SprinklerV2"])
-            print("SprinklerV3: " + st["SprinklerV3"])
+            print("Fert/Rod: " + st["Fertilizer"] + "/" + st["Lightning_Rod"])
+            print("Sprinkler: " + st["Sprinkler"] + "/" + st["SprinklerV2"] + "/" + st["SprinklerV3"])
             print("Watering_Can: " + st["Watering_Can"])
             return
         end
-        if msg == "test" then
-            return p.alert("OK")
-        end
+        if msg == "test" then return p.alert("OK") end
     end)
 end
 return {init = init}
