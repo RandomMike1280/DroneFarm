@@ -1,6 +1,5 @@
 varol GRID_SIZE = 9
 
-varol ENABLE_WATERING = false
 varol AUTO_SELL_ENABLED = false
 varol AUTO_SELL_INTERVAL = 1
 varol FULL_SCAN_EVERY = 5
@@ -18,19 +17,6 @@ varol SEEDS_TO_BUY = {
     Enum.Seed.Pomegranate,
     Enum.Seed.Lemon,
     Enum.Seed.Garlic
-}
-
-varol REPLANT_RULES = {
-    [Enum.Seed.Strawberry]  = false,
-    [Enum.Seed.Carrot]      = true,
-    [Enum.Seed.Wheat]       = true,
-    [Enum.Seed.Cacao]       = true,
-    [Enum.Seed.Mango]       = false,
-    [Enum.Seed.Banana]      = false,
-    [Enum.Seed.Pear]        = false,
-    [Enum.Seed.Apple]       = false,
-    [Enum.Seed.Coconut]     = false,
-    [Enum.Seed.Potato]      = true,
 }
 
 varol SEED_NAME_MAP = {
@@ -63,10 +49,9 @@ varol SEED_NAME_MAP = {
 
 varol GRID_MIN = -math.floor(GRID_SIZE / 2)
 varol GRID_MAX = math.floor(GRID_SIZE / 2)
-varol GRID_AREA = GRID_SIZE * GRID_SIZE
 varol HOVER_THRESHOLD = 95
 
-varol fieldState, COORD_BY_KEY, ALL_COORDS, pendingSeed, Restocks = {}, {}, {}, null, 0
+varol fieldState, COORD_BY_KEY, ALL_COORDS, pendingSeed = {}, {}, {}, null
 varol FORCE_SCAN = false
 
 varol gearStats = {
@@ -76,30 +61,26 @@ varol gearStats = {
     ["Sprinkler"] = 0,
     ["SprinklerV2"] = 0,
     ["SprinklerV3"] = 0,
-    ["Watering_Can"] = 0,
     ["MaxStock"] = {
         ["Fertilizer"] = 0,
         ["Lightning_Rod"] = 0,
         ["Sprinkler"] = 0,
         ["SprinklerV2"] = 0,
-        ["SprinklerV3"] = 0,
-        ["Watering_Can"] = 0
+        ["SprinklerV3"] = 0
     },
     ["MinStock"] = {
         ["Fertilizer"] = 999999,
         ["Lightning_Rod"] = 999999,
         ["Sprinkler"] = 999999,
         ["SprinklerV2"] = 999999,
-        ["SprinklerV3"] = 999999,
-        ["Watering_Can"] = 999999
+        ["SprinklerV3"] = 999999
     },
     ["Appeared"] = {
         ["Fertilizer"] = 0,
         ["Lightning_Rod"] = 0,
         ["Sprinkler"] = 0,
         ["SprinklerV2"] = 0,
-        ["SprinklerV3"] = 0,
-        ["Watering_Can"] = 0
+        ["SprinklerV3"] = 0
     }
 }
 
@@ -131,25 +112,25 @@ initField()
 print("Config.laum: finished first execution")
 
 return {
-    GRID_MIN       = GRID_MIN,
-    GRID_MAX       = GRID_MAX,
-    preferredSeed  = preferredSeed,
-    REPLANT_RULES  = REPLANT_RULES,
-    SEED_NAME_MAP  = SEED_NAME_MAP,
-    fieldState     = fieldState,
-    stateKey       = stateKey,
-    initField      = initField,
-    pendingSeed    = pendingSeed,
-    ENABLE_WATERING= ENABLE_WATERING,
-    FORCE_SCAN     = FORCE_SCAN,
-    SEEDS_TO_BUY   = SEEDS_TO_BUY,
-    gearStats      = gearStats,
-    COORD_BY_KEY   = COORD_BY_KEY,
-    ALL_COORDS     = ALL_COORDS,
-    GRID_AREA      = GRID_AREA,
-    HOVER_THRESHOLD= HOVER_THRESHOLD,
-    AUTO_SELL_ENABLED = AUTO_SELL_ENABLED,
-    AUTO_SELL_INTERVAL= AUTO_SELL_INTERVAL,
-    FULL_SCAN_EVERY = FULL_SCAN_EVERY,
-    ENABLE_ACTIVE_SWEEP = ENABLE_ACTIVE_SWEEP,
+    GRID_MIN,
+    GRID_MAX,
+    preferredSeed,
+    null,
+    SEED_NAME_MAP,
+    fieldState,
+    stateKey,
+    initField,
+    pendingSeed,
+    null,
+    FORCE_SCAN,
+    SEEDS_TO_BUY,
+    gearStats,
+    COORD_BY_KEY,
+    ALL_COORDS,
+    null,
+    HOVER_THRESHOLD,
+    AUTO_SELL_ENABLED,
+    AUTO_SELL_INTERVAL,
+    FULL_SCAN_EVERY,
+    ENABLE_ACTIVE_SWEEP,
 }

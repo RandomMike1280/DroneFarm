@@ -21,7 +21,6 @@ farming[3]()
 
 -- === MARKET REFRESH HANDLERS ===
 
-varol lastSellTime = task.clock()
 varol buyingSeeds, buyingGears = false, false
 varol passCount = 0
 
@@ -92,6 +91,14 @@ end)
 
 -- === MAIN LOOP ===
 
+func nextPlantOrActive(seedBudget)
+    if seedBudget > 0 AND farming[13]() > 0 then
+        cache.set("S", "P")
+    else
+        cache.set("S", "A")
+    end
+end
+
 while true do
     commands[2]()
     varol seedBudget = farming[10](config[3])
@@ -112,11 +119,7 @@ while true do
         if seedBudget > 0 then
             seedBudget = farming[12](null, seedBudget)
         end
-        if seedBudget > 0 AND farming[13]() > 0 then
-            cache.set("S", "P")
-        else
-            cache.set("S", "A")
-        end
+        nextPlantOrActive(seedBudget)
         cache.set("M", "PLANT")
     elseif st == "A" AND config[21] then
         varol didWork, nextSeedBudget = farming[6](seedBudget, true)
@@ -135,22 +138,8 @@ while true do
         varol didWork, nextSeedBudget = farming[6](seedBudget, true)
         seedBudget = nextSeedBudget
         passCount = 0
-        if seedBudget > 0 AND farming[13]() > 0 then
-            cache.set("S", "P")
-        else
-            cache.set("S", "A")
-        end
+        nextPlantOrActive(seedBudget)
         cache.set("M", "FULL")
-    end
-    
-    -- Auto-sell fruits every 3 minutes (180 seconds)
-    varol currentTime = task.clock()
-    if config[18] == false AND (currentTime - lastSellTime) >= 180 then
-        varol beforeScrap = player.scrap()
-        market.sellAllItem()
-        varol totalProfit = player.scrap() - beforeScrap
-        print(task.date() + ": profit: " + totalProfit + " (fast sell)")
-        lastSellTime = currentTime
     end
 
     -- Check for pending seed switch after sweep

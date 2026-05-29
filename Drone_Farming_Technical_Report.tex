@@ -1,0 +1,341 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{longtable}
+
+\title{Technical Report: Lau Drone Farming Automation}
+\author{Farm Automation Codebase}
+\date{May 29, 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This report documents a Lau-based drone farming automation system implemented
+across five files: \texttt{Automation5.lau}, \texttt{Config.laum},
+\texttt{FarmingOperations.laum}, \texttt{Movement.laum}, and
+\texttt{Commands.laum}. The system automates planting, crop processing, fruit
+harvesting, seed purchasing, gear purchasing, and item selling under the
+constraints of the Lau runtime, including limited cache keys, parser
+sensitivity, paste-size limits, and asynchronous drone command behavior.
+
+The final design favors a compact state machine, event-driven market handling,
+garden-driven traversal, explicit movement synchronization, and a lightweight
+service hook for repeated background work. The most important algorithmic shift
+was moving away from a full snake-pattern traversal and toward direct iteration
+over \texttt{garden.getGardenPositions()}, reducing the number of tiles that
+must be evaluated during active sweeps.
+\end{abstract}
+
+\section{Project Context}
+
+The codebase controls an in-game farming drone using the Lau scripting runtime.
+The main script runs with the \texttt{--!ndrone} pragma, which allows
+non-blocking drone commands. In this mode, issuing a physical command while the
+drone is busy may cause the command to be ignored. The automation therefore
+must explicitly wait for \texttt{Enum.DroneStatus.Sleep} before issuing
+movement, crop, or plant actions that depend on the previous physical action.
+
+The implementation is constrained by five practical limits:
+
+\begin{itemize}
+    \item The system must remain split across exactly five files.
+    \item Each file must stay below the paste and character limits of the Lau environment.
+    \item The runtime cache allows only five keys per player.
+    \item The Lau parser is sensitive to some compact syntax, so stable multiline control flow is preferred.
+    \item Background work must be cooperative, since direct infinite loops in command handlers can block other logic.
+\end{itemize}
+
+\section{File-Level Architecture}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{>{\ttfamily}p{0.29\linewidth} p{0.62\linewidth}}
+\toprule
+File & Responsibility \\
+\midrule
+Automation5.lau & Entrypoint, module wiring, market event handlers, cache-backed state machine, and main loop. \\
+Config.laum & Static configuration, seed lists, field state tables, coordinate maps, gear statistics, and state-key construction. \\
+Movement.laum & Synchronized wrapper around \texttt{droneV2.goto} with duplicate-coordinate skipping. \\
+FarmingOperations.laum & Field operations: seed inventory lookup, seed buying, garden scan, garden-driven sweep, crop handling, plant pass, and service hook integration. \\
+Commands.laum & Chat command handling, fruit harvesting service, autosell service, seed switching, scan forcing, and summary gear reporting. \\
+\bottomrule
+\end{tabular}
+\caption{Module responsibilities.}
+\end{table}
+
+The modules export positional tables rather than relying on named module
+fields. This is less readable than named access, but it is more reliable in the
+observed Lau runtime. Important slots include:
+
+\begin{itemize}
+    \item \texttt{farming[1]}: initialize farming operations.
+    \item \texttt{farming[3]}: buy configured seeds.
+    \item \texttt{farming[6]}: active sweep.
+    \item \texttt{farming[9]}: garden scan.
+    \item \texttt{farming[10]}: seed inventory count.
+    \item \texttt{farming[12]}: one-tile planting pass.
+    \item \texttt{farming[13]}: known empty tile count.
+    \item \texttt{farming[16]}: service hook setter.
+    \item \texttt{commands[2]}: background service step.
+\end{itemize}
+
+\section{State Machine}
+
+The main loop uses a compact cache-backed state machine. The cache keys are:
+
+\begin{center}
+\begin{tabular}{>{\ttfamily}c p{0.68\linewidth}}
+\toprule
+Key & Meaning \\
+\midrule
+S & Current farming state: \texttt{F}, \texttt{A}, or \texttt{P}. \\
+SS & Seed-stock event status. \\
+GS & Gear-stock event status. \\
+C & Command channel, currently used for \texttt{SCAN}. \\
+M & Human-readable mode marker. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The state values are:
+
+\begin{itemize}
+    \item \texttt{F}: full refresh state. It calls \texttt{gardenScan()} and then runs an active sweep.
+    \item \texttt{A}: active sweep state. It iterates over currently occupied garden positions.
+    \item \texttt{P}: planting state. It plants one known-empty tile per pass.
+\end{itemize}
+
+The design avoids adding cache keys because the runtime limit is five keys per
+player. Transient state, such as service flags and last autosell time, is stored
+in module-local variables instead.
+
+\section{Traversal Algorithm}
+
+\subsection{Previous Snake Traversal}
+
+Earlier versions used a snake traversal over the configured grid:
+
+\[
+T_{\text{snake}} = N^2
+\]
+
+For the current grid size of \(N=9\), a full snake sweep evaluates 81 tiles.
+This approach is robust because it can discover empty tiles and unexpected
+field changes, but it spends operations on empty or irrelevant positions.
+
+\subsection{Current Garden-Driven Sweep}
+
+The current active sweep calls:
+
+\begin{verbatim}
+varol gp=garden.getGardenPositions()
+for k,n inpairs(gp) do
+    varol cd=cByKey[k]
+    if cd then
+        fld[k]="planted"
+        varol tileWorked,nextBudget=doTile(cd[1],cd[2],sB,tO)
+        ...
+    end
+end
+\end{verbatim}
+
+The traversal cost becomes:
+
+\[
+T_{\text{garden}} = P
+\]
+
+where \(P\) is the number of occupied plant positions returned by
+\texttt{garden.getGardenPositions()}. For a sparse field, this avoids the
+majority of coordinate checks and movement decisions. The lookup table
+\texttt{COORD\_BY\_KEY} maps string keys such as \texttt{"-1,2"} back to
+coordinates without string parsing.
+
+\section{Tile Processing Algorithm}
+
+The \texttt{doTile} function is intentionally narrow:
+
+\begin{enumerate}
+    \item Move to the target coordinate through \texttt{Movement.laum}.
+    \item Read the plant under the drone with \texttt{drone.getPlant()}.
+    \item If the tile is empty, update field state.
+    \item If the plant bears fruit, mark it planted and leave fruit harvesting to the service loop.
+    \item If the plant is a crop, inspect growth percent.
+    \item If a crop is near-ready, wait for maturity.
+    \item Crop mature plants and replant if seed budget is available.
+\end{enumerate}
+
+This separation is important. Fruit harvesting is handled by a service loop,
+while crop processing remains in \texttt{doTile} because crop plants require
+the explicit \texttt{drone.crop()} and optional replant sequence.
+
+\section{Fruit Harvesting Service}
+
+Fruit harvesting was moved out of the active tile path and into
+\texttt{Commands.laum}. The service is enabled with the \texttt{init} or
+\texttt{harv} chat command and disabled with \texttt{init off} or
+\texttt{harv off}. The service step is called from the main loop and from
+longer farming waits through the farming service hook.
+
+The core harvesting condition is:
+
+\begin{verbatim}
+if drone.status() == Enum.DroneStatus.Sleep then
+    varol p = drone.getPlant()
+    if p AND p.HasFruit AND drone.canHarvest() then
+        drone.harvest()
+        return true
+    end
+end
+\end{verbatim}
+
+This design avoids waiting inside \texttt{doTile} for fruit maturity. It also
+keeps fruit harvesting opportunistic: if the drone is idle over a mature fruit
+plant, the service can harvest without requiring the active sweep to perform a
+direct harvest branch.
+
+\section{Planting Strategy}
+
+Full scan refreshes the field model:
+
+\begin{enumerate}
+    \item Mark all configured field coordinates as \texttt{"empty"}.
+    \item Call \texttt{garden.getGardenPositions()}.
+    \item Mark returned coordinates as \texttt{"planted"}.
+\end{enumerate}
+
+The planting pass then searches the known coordinate list for an empty tile.
+Current behavior plants one tile and returns immediately. This makes planting
+incremental and prevents a single state from monopolizing the main loop.
+
+\section{Market Automation}
+
+Seed and gear buying are event-driven. The script connects to:
+
+\begin{itemize}
+    \item \texttt{market.changedSeedStock}
+    \item \texttt{market.changedGearStock}
+\end{itemize}
+
+When seeds refresh, the script buys configured seeds and pushes the state
+machine toward planting. When gears refresh, it buys configured gear types and
+updates stock statistics. Watering cans were removed from the buy path after
+watering was disabled.
+
+Autosell is implemented as a service in \texttt{Commands.laum}. When enabled
+by \texttt{autosell on}, the service periodically calls
+\texttt{market.sellAllItem()} using \texttt{task.clock()} and the configured
+interval.
+
+\section{Movement Technique}
+
+\texttt{Movement.laum} wraps \texttt{droneV2.goto}. It performs two important
+safety checks:
+
+\begin{itemize}
+    \item Wait until the drone is sleeping before issuing movement.
+    \item Skip movement if the requested coordinate matches the last commanded coordinate.
+\end{itemize}
+
+The direct \texttt{goto} approach is faster than stepwise cardinal movement,
+and duplicate-coordinate skipping prevents redundant commands when the drone is
+already at the desired location.
+
+\section{Problems and Solutions}
+
+\begin{longtable}{p{0.29\linewidth} p{0.31\linewidth} p{0.31\linewidth}}
+\toprule
+Problem & Cause & Solution \\
+\midrule
+\endhead
+Cache limit exceeded & More than five cache keys were attempted. & Kept only \texttt{S}, \texttt{SS}, \texttt{GS}, \texttt{C}, and \texttt{M}; moved other state into module locals. \\
+\addlinespace
+Chat-started loop blocked work & A long-running chat callback can prevent other logic from advancing. & Converted fruit harvesting and autosell into a service step called from the main loop and farming waits. \\
+\addlinespace
+Fruit tile time stayed high & \texttt{doTile} spent time moving, inspecting, checking fruit percent, and waiting or harvesting directly. & Removed fruit waiting from \texttt{doTile}; fruit harvest now runs opportunistically through \texttt{harvStep}. \\
+\addlinespace
+Snake traversal overhead & The snake pattern evaluated every coordinate, even when only occupied plants mattered. & Replaced active sweep traversal with direct iteration over \texttt{garden.getGardenPositions()}. \\
+\addlinespace
+Parser sensitivity & Named table keys and undeclared symbols caused runtime errors in some cases. & Preferred positional exports and declared new variables with \texttt{varol}. \\
+\addlinespace
+Autosell ran once but did not repeat & Autosell was originally tied to command-loop behavior that did not continue while farming work occupied execution. & Integrated autosell into \texttt{commands[2]()} and called that service from the main loop and farming wait paths. \\
+\bottomrule
+\end{longtable}
+
+\section{Performance Evaluation}
+
+The optimization process showed that not all bottlenecks were caused by
+ordinary branch overhead. Several measured and observed outcomes guided the
+final design:
+
+\begin{itemize}
+    \item Removing watering reduced harvest tile time from roughly 2.8 seconds to about 2.1 seconds.
+    \item Cleaning up \texttt{doTile} reduced tile time further during intermediate tests.
+    \item Micro-optimizing movement polling had limited impact, suggesting the remaining cost was dominated by physical movement and runtime API calls.
+    \item Direct fruit-harvest fast paths reduced some overhead but did not eliminate the fundamental cost of tile visits.
+    \item The largest structural improvement was reducing how many tiles are visited, not only reducing the work done at each visited tile.
+\end{itemize}
+
+The final garden-driven active sweep is therefore algorithmically more
+important than a smaller \texttt{doTile} branch. If \(P \ll N^2\), replacing
+the snake traversal with garden iteration reduces both interpreter operations
+and unnecessary movement decisions.
+
+\section{Effectiveness}
+
+The current design is effective for a field dominated by occupied plants and
+fruit-bearing trees:
+
+\begin{itemize}
+    \item It reduces traversal work by targeting occupied garden positions.
+    \item It preserves crop support through explicit crop maturity checks and replanting.
+    \item It keeps fruit harvesting responsive through the service loop.
+    \item It reacts immediately to market restocks through event handlers.
+    \item It keeps long-running services cooperative instead of blocking command callbacks.
+    \item It stays within the five-cache-key limit and the five-file structure.
+\end{itemize}
+
+The system is less optimized for cases where garden metadata is incomplete or
+where many empty tiles must be planted quickly. The one-tile plant pass is
+deliberately conservative, trading planting throughput for main-loop
+responsiveness and reduced blocking.
+
+\section{Limitations}
+
+\begin{itemize}
+    \item \texttt{garden.getGardenPositions()} returns coordinate keys and plant names, but not fruit percent. This limits pre-move filtering for fruit readiness.
+    \item \texttt{drone.getPlant()} and \texttt{drone.canHarvest()} still require the drone to be physically positioned over a plant.
+    \item Crop plants still need growth polling when near-ready, because crop harvesting uses a different action path from fruit harvesting.
+    \item Numeric module indexing is compact and runtime-safe, but harder to maintain than named exports.
+    \item The design assumes the \texttt{init} service is enabled when fruit harvesting is desired.
+\end{itemize}
+
+\section{Future Work}
+
+Possible next improvements include:
+
+\begin{itemize}
+    \item Add a lightweight command to report service state without restoring the older verbose status command.
+    \item Remove remaining startup debug prints if paste size or console noise becomes important.
+    \item Consider planting more than one empty tile per \texttt{P} state only if planting throughput becomes a real bottleneck.
+    \item Investigate whether seed-specific garden APIs, such as \texttt{garden.getPlantEnum}, can provide richer metadata cheaply enough to improve targeting.
+    \item Replace numeric slots with named exports only if the runtime is confirmed to handle named module tables reliably.
+\end{itemize}
+
+\section{Conclusion}
+
+The codebase evolved from a broad, defensive grid traversal into a compact
+garden-driven automation system. The most effective changes were not traditional
+hardware-style micro-optimizations, but runtime-aware reductions in interpreter
+work: fewer visited coordinates, fewer cache keys, fewer command branches, and
+cooperative service steps instead of blocking loops. The result is a smaller,
+more focused automation script that preserves the essential farming workflow
+while avoiding the largest known sources of wasted movement and runtime work.
+
+\end{document}

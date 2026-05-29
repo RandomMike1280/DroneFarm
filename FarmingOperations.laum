@@ -1,8 +1,6 @@
-varol cfg,gMin,gMax,seed,fld,sKey,mTo,sMap,cByKey,aCoords,hThresh,hOn,sv
+varol cfg,seed,fld,sKey,mTo,sMap,cByKey,aCoords,hThresh,sv
 func init(c,m)
 cfg=c
-gMin=c[1]
-gMax=c[2]
 seed=c[3]
 fld=c[6]
 sKey=c[7]
@@ -54,9 +52,6 @@ end
 end
 func setSeed(ns)
 seed=ns
-end
-func sH(h,on)
-hOn=on
 end
 func sS(f)
 sv=f
@@ -178,7 +173,6 @@ if fld[cd[3]]=="empty" then n+=1 end
 end
 return n
 end
-varol harvestPass
 return {
 init,
 hasSeed,
@@ -190,10 +184,10 @@ setSeed,
 clearReplant,
 gardenScan,
 seedAmount,
-harvestPass,
+null,
 plantPass,
 emptyCount,
-sH,
+null,
 null,
 sS
 }
