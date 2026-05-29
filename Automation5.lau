@@ -16,6 +16,7 @@ print("Automation5.lua: got commands, initializing")
 movement[1](config)
 farming[1](config, movement)
 commands[1](config, farming, player)
+farming[16](commands[2])
 farming[3]()
 
 -- === MARKET REFRESH HANDLERS ===
@@ -92,6 +93,7 @@ end)
 -- === MAIN LOOP ===
 
 while true do
+    commands[2]()
     varol seedBudget = farming[10](config[3])
     varol st = cache.get("S")
     if st == null then st = "F" end
@@ -110,7 +112,11 @@ while true do
         if seedBudget > 0 then
             seedBudget = farming[12](null, seedBudget)
         end
-        cache.set("S", "A")
+        if seedBudget > 0 AND farming[13]() > 0 then
+            cache.set("S", "P")
+        else
+            cache.set("S", "A")
+        end
         cache.set("M", "PLANT")
     elseif st == "A" AND config[21] then
         varol didWork, nextSeedBudget = farming[6](seedBudget, true)
@@ -125,7 +131,8 @@ while true do
         end
         cache.set("M", "ACTIVE")
     else
-        varol didWork, nextSeedBudget = farming[6](seedBudget, false)
+        farming[9]()
+        varol didWork, nextSeedBudget = farming[6](seedBudget, true)
         seedBudget = nextSeedBudget
         passCount = 0
         if seedBudget > 0 AND farming[13]() > 0 then

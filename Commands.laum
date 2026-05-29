@@ -1,144 +1,168 @@
-varol cfg, fm, gMin, gMax, seed, sMap, fld, sKey, buyS, aSell = null, null, null, null, null, null, null, null, null, false
-
-func autoSellLoop()
-    if aSell then return end
-    aSell = true
-    while cfg[18] do
-        market.sellAllItem()
-        task.wait(cfg[19])
-    end
-    aSell = false
+varol cfg, fm, gMin, gMax, seed, sMap, fld, sKey, buyS, hRun, lastAS = null, null, null, null, null, null, null, null, null, false, 0
+func harvStep()
+if drone.status() == Enum.DroneStatus.Sleep then
+varol p = drone.getPlant()
+if p AND p.HasFruit AND drone.canHarvest() then
+drone.harvest()
+return true
 end
-
+end
+return false
+end
+func step()
+if hRun then
+harvStep()
+end
+if cfg[18] then
+varol now=task.clock()
+if lastAS==0 OR (now-lastAS)>=cfg[19] then
+market.sellAllItem()
+lastAS=now
+end
+end
+end
 func init(cfgRef, farmRef, p)
-    cfg = cfgRef
-    fm = farmRef
-    gMin = cfgRef[1]
-    gMax = cfgRef[2]
-    seed = cfgRef[3]
-    sMap = cfgRef[5]
-    fld = cfgRef[6]
-    sKey = cfgRef[7]
-    buyS = farmRef[3]
-    p.chatted:connect(func(msg)
-        if string.find(msg, "setseed ") == 1 then
-            varol nm = string.sub(msg, 9)
-            if nm == null then return p.alert("setseed <name>") end
-            varol ns = sMap[nm]
-            if ns == null then return p.alert("Bad seed: " + nm) end
-            if fm[2](ns) == false then market.buySeed(ns) end
-            cfg[9] = ns
-            seed = ns
-            p.alert("Seed -> " + nm)
-            return
-        end
-        if msg == "status" then
-            varol e, pl, rd = 0, 0, 0
-            varol x = gMin
-            while x <= gMax do
-                varol z = gMin
-                while z <= gMax do
-                    varol s = fld[sKey(x, z)]
-                    if s == "empty" then
-                        e += 1
-                    elseif s == "ready" then
-                        rd += 1
-                    else
-                        pl += 1
-                    end
-                    z += 1
-                end
-                x += 1
-            end
-            for sn, se inpairs(sMap) do
-                if se == seed then
-                    return p.alert("Seed:" + sn + " Scrap:" + p.scrap() + " E:" + e + " P:" + pl + " R:" + rd)
-                end
-            end
-            return p.alert("Scrap:" + p.scrap() + " E:" + e + " P:" + pl + " R:" + rd)
-        end
-        if msg == "field" then
-            varol x = gMin
-            while x <= gMax do
-                varol l = ""
-                varol z = gMin
-                while z <= gMax do
-                    varol s = fld[sKey(x, z)]
-                    if s == "empty" then
-                        l += "[ ]"
-                    elseif s == "ready" then
-                        l += "[*]"
-                    else
-                        l += "[o]"
-                    end
-                    z += 1
-                end
-                print(l)
-                x += 1
-            end
-            return
-        end
-        if msg == "scanall" then
-            cfg[11] = true
-            cache.set("C", "SCAN")
-            return p.alert("Scan forced")
-        end
-        if msg == "sellall" then
-            varol before = player.scrap()
-			market.sellAllItem()
-			varol total = player.scrap() - before
-            return p.alert("Sold: " + total)
-        end
-        if msg == "autosell on" then
-            if cfg[18] then
-                return p.alert("Autosell on")
-            end
-            cfg[18] = true
-            p.alert("Autosell on")
-            autoSellLoop()
-            return
-        end
-        if msg == "autosell off" then
-            cfg[18] = false
-            return p.alert("Autosell off")
-        end
-        if msg == "autosell" then
-            if cfg[18] then
-                cfg[18] = false
-                p.alert("Autosell off")
-            else
-                cfg[18] = true
-                p.alert("Autosell on")
-                autoSellLoop()
-            end
-            return
-        end
-        if string.find(msg, "sell ") == 1 then
-            varol slotStr, slotNum = string.sub(msg, 6), tonumber(string.sub(msg, 6))
-            if slotNum == null then return p.alert("sell <slot>") end
-            varol it = p.getItem(slotNum)
-            if it then
-                varol v = market.whatValue(slotNum)
-                market.sellItem(slotNum)
-                p.alert("Sold slot " + slotStr + " for " + v)
-            else
-                p.alert("Slot is empty")
-            end
-            return
-        end
-        if msg == "buy" then
-            buyS()
-            return p.alert("Bought seeds")
-        end
-        if msg == "ngear" then
-            varol st = cfg[13]
-            print("Restocks: " + st["Restocks"])
-            print("Fert/Rod: " + st["Fertilizer"] + "/" + st["Lightning_Rod"])
-            print("Sprinkler: " + st["Sprinkler"] + "/" + st["SprinklerV2"] + "/" + st["SprinklerV3"])
-            print("Watering_Can: " + st["Watering_Can"])
-            return
-        end
-        if msg == "test" then return p.alert("OK") end
-    end)
+cfg = cfgRef
+fm = farmRef
+gMin = cfgRef[1]
+gMax = cfgRef[2]
+seed = cfgRef[3]
+sMap = cfgRef[5]
+fld = cfgRef[6]
+sKey = cfgRef[7]
+buyS = farmRef[3]
+fm[14](harvStep,false)
+p.chatted:connect(func(msg)
+if string.find(msg, "setseed ") == 1 then
+varol nm = string.sub(msg, 9)
+if nm == null then return p.alert("setseed <name>") end
+varol ns = sMap[nm]
+if ns == null then return p.alert("Bad seed: " + nm) end
+if fm[2](ns) == false then market.buySeed(ns) end
+cfg[9] = ns
+seed = ns
+p.alert("Seed -> " + nm)
+return
 end
-return {init = init}
+if msg == "status" then
+varol e, pl, rd = 0, 0, 0
+varol x = gMin
+while x <= gMax do
+varol z = gMin
+while z <= gMax do
+varol s = fld[sKey(x, z)]
+if s == "empty" then
+e += 1
+elseif s == "ready" then
+rd += 1
+else
+pl += 1
+end
+z += 1
+end
+x += 1
+end
+for sn, se inpairs(sMap) do
+if se == seed then
+return p.alert("Seed:" + sn + " Scrap:" + p.scrap() + " E:" + e + " P:" + pl + " R:" + rd)
+end
+end
+return p.alert("Scrap:" + p.scrap() + " E:" + e + " P:" + pl + " R:" + rd)
+end
+if msg == "init off" OR msg == "harv off" then
+hRun = false
+fm[14](harvStep,false)
+return p.alert("Init off")
+end
+varol im=string.find(msg, "init")
+varol hm=string.find(msg, "harv")
+if im == 1 OR hm == 1 then
+if hRun then return p.alert("Init on") end
+hRun = true
+fm[14](harvStep,true)
+p.alert("Init on")
+return
+end
+if msg == "field" then
+varol x = gMin
+while x <= gMax do
+varol l = ""
+varol z = gMin
+while z <= gMax do
+varol s = fld[sKey(x, z)]
+if s == "empty" then
+l += "[ ]"
+elseif s == "ready" then
+l += "[*]"
+else
+l += "[o]"
+end
+z += 1
+end
+print(l)
+x += 1
+end
+return
+end
+if msg == "scanall" then
+cfg[11] = true
+cache.set("C", "SCAN")
+return p.alert("Scan forced")
+end
+if msg == "autosell on" then
+if cfg[18] then
+return p.alert("Autosell on")
+end
+cfg[18] = true
+lastAS=0
+market.sellAllItem()
+lastAS=task.clock()
+p.alert("Autosell on")
+return
+end
+if msg == "autosell off" then
+cfg[18] = false
+return p.alert("Autosell off")
+end
+if msg == "autosell" then
+if cfg[18] then
+cfg[18] = false
+p.alert("Autosell off")
+else
+cfg[18] = true
+lastAS=0
+market.sellAllItem()
+lastAS=task.clock()
+p.alert("Autosell on")
+end
+return
+end
+if string.find(msg, "sell ") == 1 then
+varol slotStr, slotNum = string.sub(msg, 6), tonumber(string.sub(msg, 6))
+if slotNum == null then return p.alert("sell <slot>") end
+varol it = p.getItem(slotNum)
+if it then
+varol v = market.whatValue(slotNum)
+market.sellItem(slotNum)
+p.alert("Sold slot " + slotStr + " for " + v)
+else
+p.alert("Slot is empty")
+end
+return
+end
+if msg == "buy" then
+buyS()
+return p.alert("Bought seeds")
+end
+if msg == "ngear" then
+varol st = cfg[13]
+print("Restocks: " + st["Restocks"])
+print("Fert/Rod: " + st["Fertilizer"] + "/" + st["Lightning_Rod"])
+print("Sprinkler: " + st["Sprinkler"] + "/" + st["SprinklerV2"] + "/" + st["SprinklerV3"])
+print("Watering_Can: " + st["Watering_Can"])
+return
+end
+if msg == "test" then return p.alert("OK") end
+end)
+end
+return {init, step, harvStep}

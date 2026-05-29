@@ -1,7 +1,6 @@
-varol cfg,mv,gMin,gMax,seed,fld,sKey,mTo,sMap,cByKey,aCoords,gArea,hThresh
+varol cfg,gMin,gMax,seed,fld,sKey,mTo,sMap,cByKey,aCoords,hThresh,hOn,sv
 func init(c,m)
 cfg=c
-mv=m
 gMin=c[1]
 gMax=c[2]
 seed=c[3]
@@ -11,11 +10,15 @@ mTo=m[2]
 sMap=c[5]
 cByKey=c[14]
 aCoords=c[15]
-gArea=c[16]
 hThresh=c[17]
 end
 func wD()
-while drone.status()~=Enum.DroneStatus.Sleep do task.wait(0.05) end
+while drone.status()~=Enum.DroneStatus.Sleep do
+if sv then
+sv()
+end
+task.wait(0.03)
+end
 end
 func seedAmount(st)
 for sn,se inpairs(sMap) do
@@ -52,201 +55,108 @@ end
 func setSeed(ns)
 seed=ns
 end
-func waitForGrowth(isF)
+func sH(h,on)
+hOn=on
+end
+func sS(f)
+sv=f
+end
+func waitForGrowth()
 while true do
-varol p=0
-if isF then p=drone.getFruitPercent() else p=drone.getPlantPercent() end
+varol p=drone.getPlantPercent()
 if p==null then p=0 end
 if p>=100 then break end
-if cfg[10] then
-varol wd=droneV2.getManualWater()
-if wd AND wd.Duration==0 then
-wD()
-drone.useItem(Enum.Gear.Watering_Can)
-end
+if sv then
+sv()
 end
 task.wait(0.5)
 end
 end
-func waterIfNeeded(k)
-if cfg[10] AND fld[k]~="empty" then
-varol wd=droneV2.getManualWater()
-if wd AND wd.Duration==0 then
-wD()
-drone.useItem(Enum.Gear.Watering_Can)
-return true
-end
-end
-return false
-end
 func doTile(c,r,sB,tO)
-varol dW=false
 mTo(c,r)
 varol k=sKey(c,r)
 varol p=drone.getPlant()
-if p then
-if p.HasFruit then
-varol pct=drone.getFruitPercent()
-if pct==null then pct=0 end
-if tO AND pct>=hThresh AND pct<100 then
-waitForGrowth(true)
-pct=100
-end
-if pct>=100 then
-drone.harvest()
+if p==null then
+fld[k]="empty"
+if sB>0 then
+drone.plant(seed)
+sB-=1
 fld[k]="planted"
-dW=true
-else
-fld[k]="ready"
+return true,sB
 end
-else
+return false,sB
+end
+if p.HasFruit then
+fld[k]="planted"
+return false,sB
+end
 varol pct=drone.getPlantPercent()
 if pct==null then pct=0 end
 if tO AND pct>=hThresh AND pct<100 then
-waitForGrowth(false)
+waitForGrowth()
 pct=100
 end
 if pct>=100 then
 drone.crop()
 wD()
-dW=true
 if sB>0 then
 drone.plant(seed)
-wD()
 sB-=1
 fld[k]="planted"
 else
 fld[k]="empty"
 end
-else
+return true,sB
+end
 fld[k]="planted"
-end
-end
-else
-fld[k]="empty"
-if sB>0 then
-wD()
-drone.plant(seed)
-wD()
-sB-=1
-fld[k]="planted"
-dW=true
-end
-end
-if cfg[10] AND fld[k]~="empty" then
-varol wd=droneV2.getManualWater()
-if wd AND wd.Duration==0 then
-wD()
-drone.useItem(Enum.Gear.Watering_Can)
-dW=true
-end
-end
-return dW,sB
+return false,sB
 end
 func sweep(sB,tO)
 varol dW=false
 if sB==null then sB=0 end
-print("sweep start. Budget: " + sB)
-varol r=gMin
-while r<=gMax do
-varol c=gMin
-varol cE=gMax
-varol cS=1
-if (r-gMin)%2~=0 then
-c=gMax
-cE=gMin
-cS=-1
+varol gp=garden.getGardenPositions()
+for k,n inpairs(gp) do
+if sv then
+sv()
 end
-while c*cS<=cE*cS do
-if tO==false OR fld[sKey(c,r)]~="empty" then
-varol tileWorked,nextBudget=doTile(c,r,sB,tO)
+varol cd=cByKey[k]
+if cd then
+fld[k]="planted"
+varol tileWorked,nextBudget=doTile(cd[1],cd[2],sB,tO)
 if tileWorked then dW=true end
 sB=nextBudget
 end
-c+=cS
-end
-r+=1
 end
 return dW,sB
 end
 func gardenScan(pos)
 varol occ=0
 for _,cd inpairs(aCoords) do
-varol p=garden.getPlantPosition(cd[1],cd[2])
-if p then
-fld[cd[3]]="planted"
-occ+=1
-else
 fld[cd[3]]="empty"
+end
+varol gp=garden.getGardenPositions()
+for k,n inpairs(gp) do
+if fld[k]~=null then
+fld[k]="planted"
+occ+=1
 end
 end
 return occ
 end
-func harvestPass(pos,sB)
-varol dW=false
-print("harvestPass start")
-for _,cd inpairs(aCoords) do
-varol cds=cd[3]
-if fld[cds]~="empty" then
-varol p=garden.getPlantPosition(cd[1],cd[2])
-if p then
-varol isF=false
-varol pct=p.PlantPercent
-fld[cds]="planted"
-if p.HasFruit OR p.FruitPercent~=null then
-isF=true
-pct=p.FruitPercent
-end
-if pct==null then pct=0 end
-if pct>=hThresh then
-print("harvestPass moving to " + cds + " (pct: " + pct + ")")
-mTo(cd[1],cd[2])
-if pct<100 then
-waitForGrowth(isF)
-pct=100
-end
-if isF then
-if pct>=100 then
-drone.harvest()
-dW=true
-waterIfNeeded(cds)
-end
-else
-if pct>=100 then
-drone.crop()
-dW=true
-if sB>0 then
-wD()
-drone.plant(seed)
-sB-=1
-fld[cds]="planted"
-waterIfNeeded(cds)
-else
-fld[cds]="empty"
-end
-end
-end
-end
-else
-fld[cds]="empty"
-end
-end
-end
-return dW,sB
-end
 func plantPass(pos,sB)
-print("plantPass start. Budget: " + sB)
 for _,cd inpairs(aCoords) do
+if sv then
+sv()
+end
 if sB<=0 then return sB end
 varol k=cd[3]
 if fld[k]=="empty" then
-print("plantPass planting at: " + k)
 mTo(cd[1],cd[2])
 wD()
 drone.plant(seed)
 sB-=1
 fld[k]="planted"
-waterIfNeeded(k)
+return sB
 end
 end
 return sB
@@ -268,19 +178,22 @@ if fld[cd[3]]=="empty" then n+=1 end
 end
 return n
 end
-varol doReplant,tile
+varol harvestPass
 return {
-init=init,
-hasSeed=hasSeed,
-buyMax=buyMax,
-doReplant=null,
-tile=doTile,
-sweep=sweep,
-setSeed=setSeed,
-clearReplant=clearReplant,
-gardenScan=gardenScan,
-seedAmount=seedAmount,
-harvestPass=harvestPass,
-plantPass=plantPass,
-emptyCount=emptyCount
+init,
+hasSeed,
+buyMax,
+null,
+doTile,
+sweep,
+setSeed,
+clearReplant,
+gardenScan,
+seedAmount,
+harvestPass,
+plantPass,
+emptyCount,
+sH,
+null,
+sS
 }
