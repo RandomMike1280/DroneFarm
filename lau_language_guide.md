@@ -80,6 +80,31 @@ stats["Watering_Can"] += 1
 stats["MaxStock"]["SprinklerV3"] = 5
 ```
 
+### Positional Tables and Placeholders
+For module exports, this project often uses ordered tables and numeric indexes instead of named fields. This avoids parser/runtime problems seen with some named return tables and keeps module contracts stable:
+```lau
+return {
+    init,        -- [1]
+    hasSeed,     -- [2]
+    buyMax,      -- [3]
+    null,        -- [4] reserved/removed slot
+    doTile,      -- [5]
+    sweep        -- [6]
+}
+```
+
+When removing a function from an exported module table, keep a `null` placeholder if callers might rely on later numeric slots. This prevents shifting every function index.
+
+Inside normal dictionaries, named string keys are still useful for structured data:
+```lau
+varol gearStats = {
+    ["Restocks"] = 0,
+    ["MaxStock"] = {
+        ["SprinklerV3"] = 0
+    }
+}
+```
+
 ### Control Flow
 The language primarily uses Lua-like block structures (`if / then / end`, `while true do`). While C-like syntax elements (`if (condition) { ... }`) are supported, they are known to be poorly implemented and buggy. **Always prefer the Lua style for stability.**
 
@@ -182,6 +207,17 @@ This project uses numeric access (`movement[1]`, `farming[6]`) because returned 
 
 Only main `.lua` / `.lau` scripts should use pragmas like `--!ndrone`. Module files (`.laum`) are loaded with `req()` and should just return their functions/data.
 
+### Stable Module Slot Contracts
+When a project uses numeric module slots, document the slot contract and update it carefully. For example, the current farming module exports service-related functions through fixed indexes:
+```lau
+farming[6](seedBudget, true)  -- sweep
+farming[9]()                  -- garden scan
+farming[12](null, seedBudget) -- plant pass
+farming[16](commands[2])      -- service hook setter
+```
+
+This style is compact, but it makes accidental slot shifts dangerous. Prefer adding `null` placeholders over deleting old slots.
+
 ## Events
 
 Events are listeners that run a function when something happens. They use callback functions inside parentheses:
@@ -246,6 +282,33 @@ market.changedSeedStock:connect(func()
 end)
 ```
 
+### Chat Commands Should Not Own Long-Running Loops
+Chat event callbacks can start or stop service flags, but avoid putting a permanent `while true do` loop directly inside `player.chatted:connect`. A long-running callback can block later command processing or compete with the main loop.
+
+Prefer this pattern:
+```lau
+varol hRun = false
+
+p.chatted:connect(func(msg)
+    if msg == "init" then
+        hRun = true
+        return p.alert("Init on")
+    end
+    if msg == "init off" then
+        hRun = false
+        return p.alert("Init off")
+    end
+end)
+
+func step()
+    if hRun then
+        harvStep()
+    end
+end
+```
+
+Then call `step()` from the main loop and from long waits. This gives background behavior without trapping execution inside the chat callback.
+
 ## Pragmas and Asynchronous Execution
 
 Pragmas are special instructional commands that tell the `.lau` engine how to process your code. They must be placed at the **very top** of your main `.lau` script (they do not work inside `.laum` module scripts).
@@ -301,7 +364,45 @@ drone.harvest()
 waitDrone()
 ```
 
+### Cooperative Service Hooks
+If the main loop can spend time inside farming functions, pass a service callback into those functions and call it during waits or long iterations:
+```lau
+varol sv = null
+
+func setService(f)
+    sv = f
+end
+
+func waitDrone()
+    while drone.status() ~= Enum.DroneStatus.Sleep do
+        if sv then
+            sv()
+        end
+        task.wait(0.03)
+    end
+end
+```
+
+This project uses that pattern so autosell and fruit harvesting continue while crop waits, movement waits, or plant passes are running.
+
 ## Core Objects and APIs
+
+### The `cache` Object
+`cache` stores small persistent string-like values for the current player. This project uses it for the main state machine and command handoff:
+```lau
+cache.set("S", "F")
+varol st = cache.get("S")
+if st == null then st = "F" end
+```
+
+Known current keys in this project:
+*   `S`: farming state (`F`, `A`, or `P`).
+*   `SS`: seed-stock event status.
+*   `GS`: gear-stock event status.
+*   `C`: command flag, such as `SCAN`.
+*   `M`: current mode marker.
+
+Important runtime constraint: the cache has a small per-player key limit. In this project, adding a sixth key caused `Cache limit exceeded! Max 5 keys allowed per player.` Keep transient flags in module-local variables instead of adding more cache keys.
 
 ### The `drone` Object
 Controls the automation drone's actions and retrieves data about its current tile.
@@ -490,6 +591,30 @@ Provides functions for scanning the farm and retrieving plant data.
 
 When using `garden.getGardenPositions()`, validate keys before using them as table indexes. Table indexes must be numbers or strings.
 
+The current code uses `garden.getGardenPositions()` as an active sweep driver. Because it returns coordinate-string keys, build a key-to-coordinate map during config initialization:
+```lau
+varol COORD_BY_KEY = {}
+varol ALL_COORDS = {}
+
+varol k = stateKey(x, z)
+varol coord = {x, z, k}
+COORD_BY_KEY[k] = coord
+ALL_COORDS[#ALL_COORDS + 1] = coord
+```
+
+Then active sweeps can iterate only occupied garden positions and avoid parsing strings:
+```lau
+varol gp = garden.getGardenPositions()
+for k, n inpairs(gp) do
+    varol cd = COORD_BY_KEY[k]
+    if cd then
+        moveTo(cd[1], cd[2])
+    end
+end
+```
+
+Do not assume `garden.getGardenPositions()` includes growth percent. In current testing it returns keys and plant names only. Use `garden.getPlantPosition(x, z)` or drone APIs when growth percent is needed.
+
 ### The `task` Object
 Provides utility functions for time and yielding. Note that loops do *not* strictly require yielding to prevent crashes, but `task.wait()` is available if needed.
 
@@ -601,3 +726,260 @@ market.changedGearStock:connect(func()
     buyingGears = false
 end)
 ```
+
+## Common Techniques and Tips From Community Scripts
+
+Community scripts often use older APIs or deliberately unsafe shortcuts for speed. Treat these as patterns to learn from, not rules to copy blindly. In this game, some drone API checks are expensive enough that the fastest script is sometimes the one with fewer safety checks.
+
+### Dynamic Plot Size From Player Land
+Instead of hardcoding the farm size, derive it from the player's land upgrade:
+```lau
+varol MAP_SIZE = (player.getTileNumber() * 2) - 1
+varol FROM_CENTRE = player.getTileNumber() - 1
+```
+
+This works well for simple square farms centered around `(0, 0)`. For scripts using a configured grid, keep the explicit config value if it is easier to reason about.
+
+### Manual Step Movement Without `droneV2.goto`
+Older scripts often move by comparing current position and stepping one tile at a time:
+```lau
+varol D = Enum.Direction
+
+func moveto(x, z)
+    varol done = false
+    while done == false do
+        varol cx = drone.getPositionX()
+        varol cz = drone.getPositionZ()
+        if cx == x AND cz == z then done = true end
+        if cx > x then
+            drone.move(D.West)
+        elseif cx < x then
+            drone.move(D.East)
+        end
+        if cz > z then
+            drone.move(D.North)
+        elseif cz < z then
+            drone.move(D.South)
+        end
+    end
+    return done
+end
+```
+
+This is portable and does not require `droneV2.goto`, but repeated position reads are expensive. Prefer `droneV2.goto(x, z)` when available and when direct movement is safe.
+
+### Minimal Harvest/Crop Action
+A compact action function can rely on capability checks instead of detailed plant inspection:
+```lau
+func harvestAny()
+    if drone.canCrop() then
+        return drone.crop()
+    elseif drone.canHarvest() then
+        return drone.harvest()
+    end
+end
+```
+
+This avoids `drone.getPlant()` when the exact plant type is not important. Use this only when cropping the current plant is acceptable. If fruit trees must be preserved, keep a fruit/crop distinction.
+
+### Inventory Normalization
+Inventory seed items may expose their enum through different fields. Community scripts often convert seed names or original keys back to `Enum.Seed`:
+```lau
+varol item = player.getInventory()[i]
+if item["Type"] == "Seed" then
+    varol e = Enum.Seed[item["OriginalKey"]]
+    if e == null then
+        e = Enum.Seed[item["Name"]]
+    end
+end
+```
+
+Some scripts use `pcall` and `tostring` to handle odd item fields:
+```lau
+varol ok = item["OriginalKey"]
+varol success = pcall(func()
+    ok = tostring(ok)
+end)
+if success then
+    item["Enum"] = Enum.Seed[ok]
+else
+    item["Enum"] = Enum.Seed[item["Name"]]
+end
+```
+
+Use this pattern when item names are inconsistent. In stable scripts, explicit seed maps are easier to audit.
+
+### Budgeted Seed Purchasing
+Seed buying can be based on available scrap and market stock:
+```lau
+varol budget = player.scrap() * 0.8
+varol stock = market.getSeedStock()
+
+for i, row inpairs(stock) do
+    varol seed = row["Seed"]
+    varol price = market.getSeedPrice(seed)
+    if price <= budget then
+        market.buySeed(seed)
+    end
+end
+```
+
+The safer version also caps buy count and yields during long purchase loops:
+```lau
+varol bought = 0
+while bought < 20 do
+    if market.buySeed(seed) == false then break end
+    bought += 1
+    task.wait(0.05)
+end
+```
+
+### Restock Timer Polling
+Before market restock events were commonly used, scripts polled restock timers:
+```lau
+varol currentStock = market.getSeedStock()
+varol lastRestockTime = market.getSeedStockTime()
+varol lastCheck = task.clock()
+
+if (task.clock() - lastCheck) >= lastRestockTime then
+    currentStock = market.getSeedStock()
+    lastRestockTime = market.getSeedStockTime()
+    lastCheck = task.clock()
+end
+```
+
+Prefer `market.changedSeedStock:connect` when available. Timer polling is still useful as a fallback or for scripts that start before event support is unlocked.
+
+### Function Tables as Local Modules
+Single-file scripts often store actions in a dictionary:
+```lau
+varol functions = {}
+
+functions["h"] = func()
+    if drone.canHarvest() then
+        drone.harvest()
+    end
+end
+
+functions["h"]()
+```
+
+This is a lightweight alternative to `.laum` modules. For larger scripts, separate modules are easier to maintain and paste into the runtime.
+
+### Recursive or Self-Restarting Loops
+Some community scripts restart a full pass by calling the same function again:
+```lau
+functions["start"] = func()
+    -- full field pass
+    return functions["start"]()
+end
+```
+
+This is compact, but an explicit `while true do` loop is usually clearer and less risky. Use recursion only if you know the Lau runtime does not grow the call stack for that pattern.
+
+### Simple Snake Movement
+A standard snake path alternates horizontal direction by row:
+```lau
+for row = 1, GRID do
+    for col = 1, GRID do
+        if col < GRID then
+            if row % 2 == 1 then
+                drone.move(Enum.Direction.East)
+            else
+                drone.move(Enum.Direction.West)
+            end
+        end
+    end
+    if row < GRID then
+        drone.move(Enum.Direction.South)
+    end
+end
+```
+
+This covers every tile and is easy to debug. For fully planted farms, a simpler continuous lane loop can be faster because it removes row/column state checks.
+
+### Continuous Lane Loop
+For farms laid out as long lines, a minimal loop can move repeatedly in one direction, then shift lanes:
+```lau
+varol plotsize = 27
+while true do
+    for j = 1, plotsize do
+        drone.move(Enum.Direction.South)
+        if drone.canHarvest() then
+            drone.harvest()
+        end
+    end
+    drone.move(Enum.Direction.East)
+end
+```
+
+This is very fast when the field layout matches the path and the drone can wrap or return naturally. It is fragile if the farm has mixed crops, empty spots, or plants that should not be cropped.
+
+### Negative-Step `for` Loops
+Lau supports numeric `for` loops with a negative step:
+```lau
+for i = PlotSize, -PlotSize, -1 do
+    drone.move(Enum.Direction.North)
+end
+```
+
+This can simplify backtracking paths and remove separate reverse-loop logic.
+
+### Swap Pathing With `droneV2.swap`
+Community swap modules move a plant by repeatedly swapping and stepping along an axis:
+```lau
+for i = xFirst, xSecond - xStep, xStep do
+    droneV2.swap(xMoveDir)
+    task.wait(0.1)
+    drone.move(xMoveDir)
+    task.wait(0.1)
+end
+```
+
+The general technique is:
+1. Move the drone to the first plant.
+2. Determine X and Z directions plus reverse directions.
+3. Swap and move along one axis.
+4. Swap and move along the other axis.
+5. Walk back with reverse swaps to place the displaced plant.
+
+Use small waits between `swap` and `move`; those are physical actions and can be ignored if issued too quickly.
+
+### Mid-Loop Selling
+Some scripts sell when inventory appears full:
+```lau
+if player.getInventorySize() >= player.getFruitCapacity() then
+    market.sellAllItem()
+end
+```
+
+This prevents lost fruit in capacity-limited runs, but checking inventory every tile adds overhead. For high-speed routes, prefer timed autosell, event-driven selling if available, or less frequent checks.
+
+### `player.sent` vs `player.alert`
+Community scripts sometimes use `player.sent("message")` for chat-style bot output:
+```lau
+player.sent("[Bot] Loop done")
+```
+
+Use `player.alert()` for short UI alerts and `player.sent()` only if the runtime supports it and chat output is desired. Frequent player messages slow scripts and clutter output.
+
+### Daily Gift Claiming
+If the Player V2 unlock is available, scripts can try to claim a daily gift at startup:
+```lau
+if playerV2.getGift() then
+    player.sent("[Bot] Daily reward claimed!")
+end
+```
+
+Keep this optional; it is unrelated to farming throughput and may require a separate unlock.
+
+### Performance Tips From Community Testing
+Common observations from shared scripts:
+*   `drone.getPositionX()` / `drone.getPositionZ()` checks add overhead when done every tile.
+*   `drone.canHarvest()` and `drone.canCrop()` are usually cheaper than detailed plant inspection, but still cost time.
+*   `drone.getPlant()` plus list lookups are useful for correctness, but can be slower than simply trying the desired action.
+*   Selling every tile or checking inventory every tile is usually too expensive for high-throughput routes.
+*   If a farm is fully planted with the same plant type, repeated action spam can outperform careful checks.
+*   If a farm is mixed or valuable fruit trees must be preserved, use safer checks even if they are slower.
+
+The practical rule is: choose checks based on the cost of being wrong. On disposable crop fields, `crop()` then `plant()` can be acceptable. On fruit-tree farms, accidental `crop()` can destroy value, so keep fruit-safe logic.

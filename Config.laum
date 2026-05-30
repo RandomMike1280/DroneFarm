@@ -15,8 +15,7 @@ varol SEEDS_TO_BUY = {
     Enum.Seed.Dragon,
     Enum.Seed.Lotus,
     Enum.Seed.Pomegranate,
-    Enum.Seed.Lemon,
-    Enum.Seed.Garlic
+    Enum.Seed.Lemon
 }
 
 varol SEED_NAME_MAP = {
@@ -49,7 +48,6 @@ varol SEED_NAME_MAP = {
 
 varol GRID_MIN = -math.floor(GRID_SIZE / 2)
 varol GRID_MAX = math.floor(GRID_SIZE / 2)
-varol HOVER_THRESHOLD = 95
 
 varol fieldState, COORD_BY_KEY, ALL_COORDS, pendingSeed = {}, {}, {}, null
 varol FORCE_SCAN = false
@@ -128,7 +126,7 @@ return {
     COORD_BY_KEY,
     ALL_COORDS,
     null,
-    HOVER_THRESHOLD,
+    null,
     AUTO_SELL_ENABLED,
     AUTO_SELL_INTERVAL,
     FULL_SCAN_EVERY,

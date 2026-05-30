@@ -1,4 +1,4 @@
-varol cfg,seed,fld,sKey,mTo,sMap,cByKey,aCoords,hThresh,sv
+varol cfg,seed,fld,sKey,mTo,sMap,cByKey,aCoords,sv
 func init(c,m)
 cfg=c
 seed=c[3]
@@ -8,15 +8,6 @@ mTo=m[2]
 sMap=c[5]
 cByKey=c[14]
 aCoords=c[15]
-hThresh=c[17]
-end
-func wD()
-while drone.status()~=Enum.DroneStatus.Sleep do
-if sv then
-sv()
-end
-task.wait(0.03)
-end
 end
 func seedAmount(st)
 for sn,se inpairs(sMap) do
@@ -56,73 +47,26 @@ end
 func sS(f)
 sv=f
 end
-func waitForGrowth()
-while true do
-varol p=drone.getPlantPercent()
-if p==null then p=0 end
-if p>=100 then break end
-if sv then
-sv()
-end
-task.wait(0.5)
-end
-end
 func doTile(c,r,sB,tO)
 mTo(c,r)
 varol k=sKey(c,r)
-varol p=drone.getPlant()
-if p==null then
-fld[k]="empty"
-if sB>0 then
-drone.plant(seed)
-sB-=1
-fld[k]="planted"
-return true,sB
-end
-return false,sB
-end
-if p.HasFruit then
-fld[k]="planted"
-return false,sB
-end
-varol pct=drone.getPlantPercent()
-if pct==null then pct=0 end
-if tO AND pct>=hThresh AND pct<100 then
-waitForGrowth()
-pct=100
-end
-if pct>=100 then
-drone.crop()
-wD()
-if sB>0 then
-drone.plant(seed)
-sB-=1
-fld[k]="planted"
-else
-fld[k]="empty"
-end
-return true,sB
-end
 fld[k]="planted"
 return false,sB
 end
 func sweep(sB,tO)
-varol dW=false
 if sB==null then sB=0 end
 varol gp=garden.getGardenPositions()
 for k,n inpairs(gp) do
-if sv then
-sv()
-end
 varol cd=cByKey[k]
 if cd then
 fld[k]="planted"
-varol tileWorked,nextBudget=doTile(cd[1],cd[2],sB,tO)
-if tileWorked then dW=true end
-sB=nextBudget
+mTo(cd[1],cd[2])
+if sv then
+sv()
 end
 end
-return dW,sB
+end
+return false,sB
 end
 func gardenScan(pos)
 varol occ=0
@@ -140,14 +84,10 @@ return occ
 end
 func plantPass(pos,sB)
 for _,cd inpairs(aCoords) do
-if sv then
-sv()
-end
 if sB<=0 then return sB end
 varol k=cd[3]
 if fld[k]=="empty" then
 mTo(cd[1],cd[2])
-wD()
 drone.plant(seed)
 sB-=1
 fld[k]="planted"
@@ -157,14 +97,7 @@ end
 return sB
 end
 func clearReplant()
-for _,cd inpairs(aCoords) do
-mTo(cd[1],cd[2])
-wD()
-drone.crop()
-wD()
-drone.plant(seed)
-fld[cd[3]]="planted"
-end
+gardenScan(null)
 end
 func emptyCount()
 varol n=0

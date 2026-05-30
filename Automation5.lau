@@ -28,7 +28,6 @@ cache.set("S", "F")
 cache.set("SS", "I")
 cache.set("GS", "I")
 cache.set("C", "")
-cache.set("M", "START")
 
 func buySeedsOnRefresh()
     if buyingSeeds then return end
@@ -38,7 +37,6 @@ func buySeedsOnRefresh()
     farming[3]()
     cache.set("SS", "D")
     cache.set("S", "P")
-    cache.set("M", "SEEDS")
     buyingSeeds = false
 end
 
@@ -77,7 +75,6 @@ func buyGearsOnRefresh()
         end
     end
     cache.set("GS", "D")
-    cache.set("M", "GEARS")
     buyingGears = false
 end
 
@@ -109,18 +106,11 @@ while true do
         cache.set("C", "")
         config[11] = false
     end
-    print("Loop " + st + " Budget: " + seedBudget)
-
-    if seedBudget <= 0 then
-        print("No preferred seeds available; waiting for seed market refresh")
-    end
-    
     if st == "P" then
         if seedBudget > 0 then
             seedBudget = farming[12](null, seedBudget)
         end
         nextPlantOrActive(seedBudget)
-        cache.set("M", "PLANT")
     elseif st == "A" AND config[21] then
         varol didWork, nextSeedBudget = farming[6](seedBudget, true)
         seedBudget = nextSeedBudget
@@ -132,14 +122,12 @@ while true do
         else
             cache.set("S", "A")
         end
-        cache.set("M", "ACTIVE")
     else
         farming[9]()
         varol didWork, nextSeedBudget = farming[6](seedBudget, true)
         seedBudget = nextSeedBudget
         passCount = 0
         nextPlantOrActive(seedBudget)
-        cache.set("M", "FULL")
     end
 
     -- Check for pending seed switch after sweep

@@ -1,8 +1,7 @@
 varol cfg, fm, seed, sMap, buyS, hRun, lastAS = null, null, null, null, null, false, 0
 func harvStep()
 if drone.status() == Enum.DroneStatus.Sleep then
-varol p = drone.getPlant()
-if p AND p.HasFruit AND drone.canHarvest() then
+if drone.canHarvest() then
 drone.harvest()
 return true
 end
@@ -13,12 +12,11 @@ func step()
 if hRun then
 harvStep()
 end
-if cfg[18] then
+if cfg[18]==false then return end
 varol now=task.clock()
 if lastAS==0 OR (now-lastAS)>=cfg[19] then
 market.sellAllItem()
 lastAS=now
-end
 end
 end
 func init(cfgRef, farmRef, p)

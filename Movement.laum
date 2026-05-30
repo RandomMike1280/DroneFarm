@@ -1,17 +1,6 @@
--- ============================================================
--- MOVEMENT
--- Grid-relative movement helpers.
--- moveTo(tx, tz) moves the drone to absolute field coordinates.
--- ============================================================
-
--- [H2] Instrumentation: detect if this file is auto-executed
-print("Movement.laum executing")
-
-varol cfg = null
 varol lx,lz = null,null
 
 func init(cfgRef)
-    cfg = cfgRef
 end
 
 func moveTo(tx, tz)
