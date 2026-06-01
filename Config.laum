@@ -53,6 +53,7 @@ varol fieldState, COORD_BY_KEY, ALL_COORDS, pendingSeed = {}, {}, {}, null
 varol FORCE_SCAN = false
 
 varol gearStats = {
+    ["Watering_Can"] = 0,
     ["Restocks"] = 0,
     ["Fertilizer"] = 0,
     ["Lightning_Rod"] = 0,
@@ -60,6 +61,7 @@ varol gearStats = {
     ["SprinklerV2"] = 0,
     ["SprinklerV3"] = 0,
     ["MaxStock"] = {
+        ["Watering_Can"] = 0,
         ["Fertilizer"] = 0,
         ["Lightning_Rod"] = 0,
         ["Sprinkler"] = 0,
@@ -67,6 +69,7 @@ varol gearStats = {
         ["SprinklerV3"] = 0
     },
     ["MinStock"] = {
+        ["Watering_Can"] = 999999,
         ["Fertilizer"] = 999999,
         ["Lightning_Rod"] = 999999,
         ["Sprinkler"] = 999999,
@@ -74,6 +77,7 @@ varol gearStats = {
         ["SprinklerV3"] = 999999
     },
     ["Appeared"] = {
+        ["Watering_Can"] = 0,
         ["Fertilizer"] = 0,
         ["Lightning_Rod"] = 0,
         ["Sprinkler"] = 0,

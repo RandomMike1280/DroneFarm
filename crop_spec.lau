@@ -1,0 +1,91 @@
+--!ndrone
+varol TARGET_TREE = "Cacao"
+varol GRID_SIZE = 13
+varol GRID_MIN = -math.floor(GRID_SIZE / 2)
+varol GRID_MAX = math.floor(GRID_SIZE / 2)
+varol running = false
+varol coordByKey = {}
+
+func stateKey(x,z)
+return x + "," + z
+end
+
+func initCoords()
+varol x = GRID_MIN
+while x <= GRID_MAX do
+varol z = GRID_MIN
+while z <= GRID_MAX do
+varol k = stateKey(x,z)
+coordByKey[k] = {x,z}
+z += 1
+end
+x += 1
+end
+end
+
+func waitDrone()
+while drone.status() ~= Enum.DroneStatus.Sleep do
+task.wait(0.03)
+end
+end
+
+func isTarget(nm)
+if nm == TARGET_TREE then return true end
+if nm == TARGET_TREE + "Tree" then return true end
+if nm == TARGET_TREE + "Bush" then return true end
+return false
+end
+
+func cropTarget()
+if running then
+player.alert("crop_spec already running")
+return
+end
+running = true
+varol removed = 0
+varol targets = {}
+print("crop_spec scan start target=" + TARGET_TREE)
+varol gp = garden.getGardenPositions()
+for k,n inpairs(gp) do
+varol cd = coordByKey[k]
+if cd then
+varol pn = n["PlantName"]
+if isTarget(pn) then
+targets[#targets + 1] = {cd[1], cd[2], pn}
+print("crop_spec target " + pn + " at " + k)
+end
+end
+end
+print("crop_spec targets found=" + #targets)
+player.alert("Found " + #targets + " " + TARGET_TREE)
+for i,t inpairs(targets) do
+print("crop_spec moving " + i + "/" + #targets + " to " + t[1] + "," + t[2])
+droneV2.goto(t[1], t[2])
+waitDrone()
+print("crop_spec cropping " + t[3] + " at " + t[1] + "," + t[2])
+if drone.crop() then
+removed += 1
+print("crop_spec removed count=" + removed)
+else
+print("crop_spec crop returned false at " + t[1] + "," + t[2])
+end
+waitDrone()
+task.wait(0.08)
+end
+running = false
+print("crop_spec complete removed=" + removed)
+player.alert("Removed " + removed + " " + TARGET_TREE)
+end
+
+player.chatted:connect(func(message)
+if message == "!crop" then
+cropTarget()
+end
+end)
+
+initCoords()
+player.alert("Say !crop to remove " + TARGET_TREE)
+
+while true do
+task.wait(1)
+end

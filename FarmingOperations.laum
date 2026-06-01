@@ -1,12 +1,13 @@
-varol cfg,seed,fld,sKey,mTo,sMap,cByKey,aCoords,sv
+varol cfg,gMin,gMax,seed,fld,sKey,mTo,sMap,aCoords,sv
 func init(c,m)
 cfg=c
+gMin=c[1]
+gMax=c[2]
 seed=c[3]
 fld=c[6]
 sKey=c[7]
 mTo=m[2]
 sMap=c[5]
-cByKey=c[14]
 aCoords=c[15]
 end
 func seedAmount(st)
@@ -55,16 +56,24 @@ return false,sB
 end
 func sweep(sB,tO)
 if sB==null then sB=0 end
-varol gp=garden.getGardenPositions()
-for k,n inpairs(gp) do
-varol cd=cByKey[k]
-if cd then
-fld[k]="planted"
-mTo(cd[1],cd[2])
+varol r=gMin
+while r<=gMax do
+varol c=gMin
+varol cE=gMax
+varol cS=1
+if (r-gMin)%2~=0 then
+c=gMax
+cE=gMin
+cS=-1
+end
+while c*cS<=cE*cS do
+mTo(c,r)
 if sv then
 sv()
 end
+c+=cS
 end
+r+=1
 end
 return false,sB
 end

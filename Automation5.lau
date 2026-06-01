@@ -47,6 +47,7 @@ func buyGearsOnRefresh()
     print(task.date() + ": gear market refreshed; buying gears")
     config[13].Restocks += 1
     varol gears = {
+        {["Enum"] = Enum.Gear.Watering_Can, ["Name"] = "Watering_Can"},
         {["Enum"] = Enum.Gear.Fertilizer, ["Name"] = "Fertilizer"},
         {["Enum"] = Enum.Gear.Lightning_Rod, ["Name"] = "Lightning_Rod"},
         {["Enum"] = Enum.Gear.Sprinkler, ["Name"] = "Sprinkler"},
