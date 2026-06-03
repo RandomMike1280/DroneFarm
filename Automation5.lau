@@ -1,4 +1,5 @@
 --!ndrone
+-- @version 1.0.0
 -- ============================================================
 -- AUTOMATION5 - Entry Point
 -- ============================================================
@@ -12,12 +13,12 @@ varol farming  = req("FarmingOperations.laum")
 print("Automation5.lua: got farming")
 varol commands = req("Commands.laum")
 print("Automation5.lua: got commands, initializing")
-
 movement[1](config)
 farming[1](config, movement)
 commands[1](config, farming, player)
 farming[16](commands[2])
 farming[3]()
+commands[4]()
 
 -- === MARKET REFRESH HANDLERS ===
 
@@ -38,6 +39,7 @@ func buySeedsOnRefresh()
     cache.set("SS", "D")
     cache.set("S", "P")
     buyingSeeds = false
+    commands[5]()
 end
 
 func buyGearsOnRefresh()

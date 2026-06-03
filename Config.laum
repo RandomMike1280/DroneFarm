@@ -1,3 +1,4 @@
+-- @version 1.0.0
 varol GRID_SIZE = 13
 
 varol AUTO_SELL_ENABLED = false
@@ -6,11 +7,9 @@ varol FULL_SCAN_EVERY = 5
 varol ENABLE_ACTIVE_SWEEP = true
 
 varol preferredSeed = Enum.Seed.Pomegranate
-
+-- Modify this as needed for your needs
 varol SEEDS_TO_BUY = {
-    Enum.Seed.Mango,
     Enum.Seed.Dragon,
-    Enum.Seed.Lotus,
     Enum.Seed.Pomegranate,
     Enum.Seed.Lemon,
     Enum.Seed.Cherry,

@@ -983,3 +983,138 @@ Common observations from shared scripts:
 *   If a farm is mixed or valuable fruit trees must be preserved, use safer checks even if they are slower.
 
 The practical rule is: choose checks based on the cost of being wrong. On disposable crop fields, `crop()` then `plant()` can be acceptable. On fruit-tree farms, accidental `crop()` can destroy value, so keep fruit-safe logic.
+
+## The `display` Module
+
+The Display module allows you to create custom User Interfaces (UI) on the screen using code.
+
+### 1. Main Screen Initialization
+`display.mainScreen()`: Returns the unique ID of the player's main screen UI.
+
+You MUST set the `Parent` of any new UI elements you create to this mainScreen ID. If you don't, they will not be visible on the screen!
+
+### 2. Creating UI Elements
+`display.newUI(Enum.UIElement)`: Creates a new UI element and returns its unique ID.
+
+This function requires an `Enum.UIElement` value to know what to build.
+
+**Available Enums:** `.Box`, `.Label`, `.ImageLabel`, `.Button`, `.ImageButton`, `.Input`
+
+### 3. UI Limits & Security (Crucial)
+To prevent screen lag and malicious spam, strict limits are enforced per script. You can only create up to:
+
+*   **Box:** Max 20 elements
+*   **Label & ImageLabel:** Max 10 elements each
+*   **Button & ImageButton:** Max 5 elements each
+*   **Input:** Max 3 elements
+
+**Security Warning:** The engine tracks UI creation strictly. You cannot rapidly create and delete UI elements to bypass limits. Spamming UI creations is blocked and will throw errors.
+
+#### Example code creating a basic UI
+```lau
+-- 1. Get the main screen
+varol screen = display.mainScreen()
+
+-- 2. Create a new Box element
+varol myBox = display.newUI(Enum.UIElement.Box)
+
+myBox.Parent = screen
+myBox.Position = udim2(0.5, 0, 0.5, 0)
+myBox.Size = udim2(0.2, 0.2)
+
+-- 3. Create a new Label element
+varol myLabel = display.newUI(Enum.UIElement.Label)
+
+myLabel.Parent = myBox
+myLabel.Size = udim2(1, 0.1)
+
+myLabel.Text = "Hello UI"
+
+print("UI created successfully!")
+```
+
+## The `http` Module
+
+The HTTP module allows your scripts to communicate with external web services. Access is restricted to whitelisted domains for security. Accessed with `http.` prefix.
+
+### 1. Network Requests
+*   `http.get(url)`: Sends a GET request to a whitelisted URL and returns the response as a string.
+*   `http.post(url, data)`: Sends a POST request with string data to a whitelisted URL.
+*   `http.request(url/string, method/string, body/string, headers/list)`: Sends a fully customizable network request. Essential for communicating with AI APIs or services that require authentication (API Keys) via headers.
+
+**Security Note:** Methods are strictly limited to `GET` and `POST`. If sending a GET request, pass an empty string (`""`) for the body parameter.
+
+### 2. JSON Processing
+Used to convert between Lau Lists and JSON strings. These functions have internal memory limits to prevent system overloads.
+
+*   `http.jsonDecode(jsonString)`: Converts a JSON string into a Lau List.
+*   `http.jsonEncode(list)`: Converts a Lau List into a JSON string.
+
+### 3. System Limits & Security (Crucial)
+To ensure server stability, the following strict limits are enforced on all HTTP operations:
+
+*   **Rate Limit (Standard):** 70 requests per minute.
+*   **Rate Limit (Private Server):** 200 requests per minute.
+*   **Timeout:** The engine waits a maximum of 5 seconds for a response before cancelling.
+*   **Whitelist:** Requests only work with pre-approved, whitelisted domains. Unrecognized URLs will throw an error.
+
+#### Safe HTTP request example
+```lau
+-- Using pcall is highly recommended for HTTP due to timeouts/limits
+varol success, response = pcall(http.get, "https://api.whitelisted.com/data")
+
+if success == true then
+    varol data = http.jsonDecode(response)
+    print("Received: " + data.name)
+else
+    player.alert("HTTP Request Failed: Time-out or Limit reached.")
+end
+```
+
+#### Advanced API requests example
+```lau
+-- Using pcall is highly recommended for HTTP due to timeouts/limits
+varol success, response = pcall(http.get, "https://api.whitelisted.com/data")
+
+if success == true then
+    varol data = http.jsonDecode(response)
+    print("Received: " + data.name)
+else
+    player.alert("HTTP Request Failed: Time-out or Limit reached.")
+end
+```
+
+### Whitelisted Domains
+*   `generativelanguage.googleapis.com` (Gemini)
+*   `api.openai.com` (OpenAI)
+*   `api-inference.huggingface.co`
+*   `api.groq.com` (High-speed LLM)
+*   `api.anthropic.com` (Claude)
+*   `api.deepseek.com`
+*   `api.aleph-alpha.com`
+*   `openrouter.ai`
+*   `pollinations.ai`
+*   `script.google.com` (Google Apps Script)
+*   `script.googleusercontent.com` (Apps Script Content)
+*   `www.googleapis.com` (YouTube Data & Google Services)
+*   `github.com` & `raw.githubusercontent.com`
+*   `api.gitlab.com`
+*   `pastebin.com`
+*   `replit.dev`
+*   `api.vercel.com` & `api.render.com`
+*   `api.cloudflare.com`
+*   `backboard.railway.app`
+*   `api.minecraftservices.com`
+*   `api.imgur.com` & `api.giphy.com`
+*   `webhook.lewisakura.moe` (Discord Proxy)
+*   `api.telegram.org`
+*   `hooks.slack.com`
+*   `api.sendgrid.com` (Email)
+*   `pusher.com`
+*   `api.open-meteo.com`
+*   `worldtimeapi.org`
+*   `newsapi.org`
+*   `api.nasa.gov`
+*   `us1.locationiq.com`
+*   `themealdb.com` & `catfact.ninja`
+*   `en.wikipedia.org`

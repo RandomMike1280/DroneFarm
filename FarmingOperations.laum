@@ -1,3 +1,4 @@
+-- @version 1.0.0
 varol cfg,gMin,gMax,seed,fld,sKey,mTo,sMap,aCoords,sv
 func init(c,m)
 cfg=c
