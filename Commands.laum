@@ -1,7 +1,7 @@
 -- @version 1.0.0
 varol cfg, fm, seed, sMap, buyS, hRun, lastAS = null, null, null, null, null, false, 0
 varol REPO_URL = "https://raw.githubusercontent.com/RandomMike1280/DroneFarm/main/versions.json"
-varol LOCAL_VERSION = "1.0.0"
+varol LOCAL_VERSION = "1.0.1"
 varol sLbl, dLbl, chk = null, null, false
 func harvStep()
 if drone.status() == Enum.DroneStatus.Sleep then
