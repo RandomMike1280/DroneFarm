@@ -1,7 +1,3 @@
 {
-  "Automation5": "1.0.0",
-  "Commands": "1.0.0",
-  "Config": "1.0.0",
-  "FarmingOperations": "1.0.0",
-  "Movement": "1.0.0"
+  "version": "1.0.1"
 }

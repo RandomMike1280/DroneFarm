@@ -1,7 +1,7 @@
 -- @version 1.0.0
 varol cfg, fm, seed, sMap, buyS, hRun, lastAS = null, null, null, null, null, false, 0
 varol REPO_URL = "https://raw.githubusercontent.com/RandomMike1280/DroneFarm/main/versions.json"
-varol LOCAL_VERSIONS = {["Automation5"]="1.0.0",["Commands"]="1.0.0",["Config"]="1.0.0",["FarmingOperations"]="1.0.0",["Movement"]="1.0.0"}
+varol LOCAL_VERSION = "1.0.0"
 varol sLbl, dLbl, chk = null, null, false
 func harvStep()
 if drone.status() == Enum.DroneStatus.Sleep then
@@ -108,57 +108,39 @@ func vcInit()
 varol scr = display.mainScreen()
 varol box = display.newUI(Enum.UIElement.Box)
 box.Parent = scr
-box.Position = udim2(0.78, 0, 0.01, 0)
-box.Size = udim2(0.21, 0, 0.07, 0)
+box.Position = udim2(0.80, 0, 0.02, 0)
+box.Size = udim2(0.18, 0, 0.08, 0)
+box.BackgroundTransparency = 0.3
 sLbl = display.newUI(Enum.UIElement.Label)
 sLbl.Parent = box
-sLbl.Position = udim2(0.05, 0, 0.05, 0)
-sLbl.Size = udim2(0.9, 0, 0.45, 0)
+sLbl.Position = udim2(0.05, 0, 0.1, 0)
+sLbl.Size = udim2(0.9, 0, 0.8, 0)
+sLbl.BackgroundTransparency = 1
+sLbl.TextScaled = true
 sLbl.Text = "Checking..."
-dLbl = display.newUI(Enum.UIElement.Label)
-dLbl.Parent = box
-dLbl.Position = udim2(0.05, 0, 0.5, 0)
-dLbl.Size = udim2(0.9, 0, 0.45, 0)
-dLbl.Text = ""
 vcCheck()
 end
 func vcCheck()
 if chk then return end
 chk = true
 sLbl.Text = "Checking..."
-dLbl.Text = ""
 varol ok, res = pcall(http.get, REPO_URL)
 if ok == false then
-sLbl.Text = "Check failed"
-dLbl.Text = "Network error"
+sLbl.Text = "Check failed\nNetwork error"
 chk = false
 return
 end
 varol ok2, rm = pcall(http.jsonDecode, res)
 if ok2 == false then
-sLbl.Text = "Check failed"
-dLbl.Text = "Bad response"
+sLbl.Text = "Check failed\nBad response"
 chk = false
 return
 end
-varol od = {}
-for nm, lv inpairs(LOCAL_VERSIONS) do
-varol rv = rm[nm]
-if rv ~= null AND rv ~= lv then
-od[#od + 1] = nm
-end
-end
-if #od == 0 then
-sLbl.Text = "Up to date"
-dLbl.Text = ""
+varol rv = rm.version
+if rv ~= null AND rv ~= LOCAL_VERSION then
+sLbl.Text = "Update Available!\n(v" + LOCAL_VERSION + " -> v" + rv + ")"
 else
-sLbl.Text = #od + " file(s) outdated"
-varol ns = ""
-for i, n inpairs(od) do
-if i > 1 then ns = ns + ", " end
-ns = ns + n
-end
-dLbl.Text = ns
+sLbl.Text = "Up to date\n(v" + LOCAL_VERSION + ")"
 end
 chk = false
 end
