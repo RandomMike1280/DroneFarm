@@ -9,13 +9,13 @@ varol preferredSeed = Enum.Seed.Pomegranate
 
 varol SEEDS_TO_BUY = {
     Enum.Seed.Mango,
-    Enum.Seed.Coconut,
-    Enum.Seed.Cacao,
-    Enum.Seed.Kiwi,
     Enum.Seed.Dragon,
     Enum.Seed.Lotus,
     Enum.Seed.Pomegranate,
-    Enum.Seed.Lemon
+    Enum.Seed.Lemon,
+    Enum.Seed.Cherry,
+    Enum.Seed.Starfruit,
+    Enum.Seed.GoldenApple -- this thing exists?!?
 }
 
 varol SEED_NAME_MAP = {
@@ -44,6 +44,8 @@ varol SEED_NAME_MAP = {
     ["Dragon"]      = Enum.Seed.Dragon,
     ["Lotus"]       = Enum.Seed.Lotus,
     ["Pomegranate"] = Enum.Seed.Pomegranate,
+    ["Cherry"]      = Enum.Seed.Cherry,
+    ["Starfruit"]   = Enum.Seed.Starfruit
 }
 
 varol GRID_MIN = -math.floor(GRID_SIZE / 2)
