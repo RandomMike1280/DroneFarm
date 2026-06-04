@@ -1,4 +1,3 @@
--- @version 1.0.0
 varol GRID_SIZE = 13
 
 varol AUTO_SELL_ENABLED = false

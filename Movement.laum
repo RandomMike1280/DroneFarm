@@ -1,4 +1,3 @@
--- @version 1.0.0
 varol lx,lz = null,null
 
 func init(cfgRef)

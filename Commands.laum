@@ -1,4 +1,4 @@
--- @version 1.0.0
+-- @version 1.0.1
 varol cfg, fm, seed, sMap, buyS, hRun, lastAS = null, null, null, null, null, false, 0
 varol REPO_URL = "https://raw.githubusercontent.com/RandomMike1280/DroneFarm/main/versions.json"
 varol LOCAL_VERSION = "1.0.1"
