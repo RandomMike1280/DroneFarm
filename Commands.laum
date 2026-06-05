@@ -1,7 +1,7 @@
 -- @version 1.0.1
-varol cfg, fm, seed, sMap, buyS, hRun, lastAS = null, null, null, null, null, false, 0
+varol cfg, fm, seed, sMap, buyS, lastAS = null, null, null, null, null, 0
 varol REPO_URL = "https://raw.githubusercontent.com/RandomMike1280/DroneFarm/main/versions.json"
-varol LOCAL_VERSION = "1.0.1"
+varol LOCAL_VERSION = "1.0.2"
 varol sLbl, dLbl, chk = null, null, false
 func harvStep()
 if drone.status() == Enum.DroneStatus.Sleep then
@@ -12,17 +12,6 @@ end
 end
 return false
 end
-func step()
-if hRun then
-harvStep()
-end
-if cfg[18]==false then return end
-varol now=task.clock()
-if lastAS==0 OR (now-lastAS)>=cfg[19] then
-market.sellAllItem()
-lastAS=now
-end
-end
 func init(cfgRef, farmRef, p)
 cfg = cfgRef
 fm = farmRef
@@ -30,65 +19,10 @@ seed = cfgRef[3]
 sMap = cfgRef[5]
 buyS = farmRef[3]
 p.chatted:connect(func(msg)
-if string.find(msg, "setseed ") == 1 then
-varol nm = string.sub(msg, 9)
-if nm == null then return p.alert("setseed <name>") end
-varol ns = sMap[nm]
-if ns == null then return p.alert("Bad seed: " + nm) end
-if fm[2](ns) == false then market.buySeed(ns) end
-cfg[9] = ns
-seed = ns
-p.alert("Seed -> " + nm)
-return
-end
-if msg == "init off" OR msg == "harv off" then
-hRun = false
-return p.alert("Init off")
-end
-varol im=string.find(msg, "init")
-varol hm=string.find(msg, "harv")
-if im == 1 OR hm == 1 then
-if hRun then return p.alert("Init on") end
-hRun = true
-p.alert("Init on")
-return
-end
 if msg == "scanall" then
-cfg[11] = true
-cache.set("C", "SCAN")
-return p.alert("Scan forced")
-end
-if msg == "autosell on" then
-if cfg[18] then
-return p.alert("Autosell on")
-end
-cfg[18] = true
-lastAS=0
-market.sellAllItem()
-lastAS=task.clock()
-p.alert("Autosell on")
-return
-end
-if msg == "autosell off" then
-cfg[18] = false
-return p.alert("Autosell off")
-end
-if msg == "autosell" then
-if cfg[18] then
-cfg[18] = false
-p.alert("Autosell off")
-else
-cfg[18] = true
-lastAS=0
-market.sellAllItem()
-lastAS=task.clock()
-p.alert("Autosell on")
-end
-return
-end
-if msg == "buy" then
-buyS()
-return p.alert("Bought seeds")
+    cfg[11] = true
+    cache.set("C", "SCAN")
+    return p.alert("Scan forced")
 end
 if msg == "ngear" then
 varol st = cfg[13]
@@ -144,4 +78,4 @@ sLbl.Text = "Up to date\n(v" + LOCAL_VERSION + ")"
 end
 chk = false
 end
-return {init, step, harvStep, vcInit, vcCheck}
+return {init, null, harvStep, vcInit, vcCheck}

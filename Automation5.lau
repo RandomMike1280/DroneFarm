@@ -16,7 +16,6 @@ print("Automation5.lua: got commands, initializing")
 movement[1](config)
 farming[1](config, movement)
 commands[1](config, farming, player)
-farming[16](commands[2])
 farming[3]()
 commands[4]()
 
@@ -29,6 +28,14 @@ cache.set("S", "F")
 cache.set("SS", "I")
 cache.set("GS", "I")
 cache.set("C", "")
+
+func initialize() -- this is not a safe loop and the init command can only be ran one time
+    player.alert("Initializing...")
+    while true do -- otherwise it could spawn too much concurrent processes
+        market.sellAllItem()
+        task.wait(0.1)
+    end
+end
 
 func buySeedsOnRefresh()
     if buyingSeeds then return end
@@ -85,6 +92,12 @@ market.changedSeedStock:connect(func()
     buySeedsOnRefresh()
 end)
 
+player.chatted:connect(func(message)
+    if message == "!init" then
+		initialize()
+    end
+end)
+
 market.changedGearStock:connect(func()
     buyGearsOnRefresh()
 end)
@@ -100,7 +113,6 @@ func nextPlantOrActive(seedBudget)
 end
 
 while true do
-    commands[2]()
     varol seedBudget = farming[10](config[3])
     varol st = cache.get("S")
     if st == null then st = "F" end

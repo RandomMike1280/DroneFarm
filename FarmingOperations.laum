@@ -45,9 +45,6 @@ end
 func setSeed(ns)
 seed=ns
 end
-func sS(f)
-sv=f
-end
 func doTile(c,r,sB,tO)
 mTo(c,r)
 varol k=sKey(c,r)
@@ -58,9 +55,7 @@ func sweep(sB,tO)
 if sB==null then sB=0 end
 varol r=gMin
 while r<=gMax do
-varol c=gMin
-varol cE=gMax
-varol cS=1
+varol c,cE,cS=gMin,gMax,1
 if (r-gMin)%2~=0 then
 c=gMax
 cE=gMin
@@ -68,9 +63,7 @@ cS=-1
 end
 while c*cS<=cE*cS do
 mTo(c,r)
-if sv then
-sv()
-end
+if drone.canHarvest() then drone.harvest() end
 c+=cS
 end
 r+=1
@@ -130,6 +123,5 @@ null,
 plantPass,
 emptyCount,
 null,
-null,
-sS
+null
 }
