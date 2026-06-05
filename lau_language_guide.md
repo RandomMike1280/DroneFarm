@@ -232,6 +232,10 @@ An event has three parts:
 *   The listener type after the colon, such as `:connect` or `:once`.
 *   The callback function, such as `func(message) ... end`.
 
+Event callbacks run immediately when the event is triggered. In observed behavior, callbacks from events such as `market.changedSeedStock` and `player.chatted` do not wait for the main program loop to reach them. They run in a separate execution thread, which means events can be used for true parallel-style processing: market buying, hotkeys, command flags, and other reactive work can happen while the main farming loop continues.
+
+Because event callbacks can run concurrently with the main loop, protect shared state with simple guard flags when the callback performs work that can overlap.
+
 ### `:connect`
 `:connect` permanently listens and runs the callback every time the event fires.
 ```lau
@@ -281,6 +285,46 @@ market.changedSeedStock:connect(func()
     buyingSeeds = false
 end)
 ```
+
+This separate-thread behavior is powerful, but it also means physical drone actions can conflict if multiple callbacks and the main loop command the drone at the same time. Prefer using events to set flags or trigger non-movement work unless the callback owns the full action sequence.
+
+### Player Input Event
+`player.input:connect` listens to keyboard input and passes the pressed key as an `Enum.KeyCode` value:
+```lau
+player.input:connect(func(k)
+    print(k)
+end)
+```
+
+Example output while pressing keys:
+```text
+Enum.KeyCode.K
+Enum.KeyCode.S
+Enum.KeyCode.W
+Enum.KeyCode.A
+Enum.KeyCode.F
+Enum.KeyCode.D
+```
+
+This can be used for hotkeys instead of relying only on chat commands:
+```lau
+varol running = false
+
+player.input:connect(func(k)
+    if k == Enum.KeyCode.K then
+        running = NOT running
+        if running then
+            player.alert("Running")
+        else
+            player.alert("Paused")
+        end
+    end
+end)
+```
+
+Like chat and market events, input callbacks fire as soon as the key is pressed. Keep hotkey callbacks short: toggle flags, update modes, or request a scan. Avoid long movement loops directly inside `player.input:connect`, because repeated key presses can create overlapping work.
+
+Side note: this event was discovered from the game's loading screen hints, and it is useful for making scripts feel more interactive than chat-only command systems.
 
 ### Chat Commands Should Not Own Long-Running Loops
 Chat event callbacks can start or stop service flags, but avoid putting a permanent `while true do` loop directly inside `player.chatted:connect`. A long-running callback can block later command processing or compete with the main loop.
