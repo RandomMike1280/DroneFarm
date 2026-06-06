@@ -1,5 +1,5 @@
 --!ndrone
--- @version 1.0.2
+-- @version 1.0.3
 -- ============================================================
 -- AUTOMATION5 - Entry Point
 -- ============================================================
@@ -21,7 +21,7 @@ commands[4]()
 
 -- === MARKET REFRESH HANDLERS ===
 
-varol buyingSeeds, buyingGears = false, false
+varol buyingSeeds, buyingGears, init = false, false, false
 varol passCount = 0
 
 cache.set("S", "F")
@@ -29,12 +29,15 @@ cache.set("SS", "I")
 cache.set("GS", "I")
 cache.set("C", "")
 
-func initialize() -- this is not a safe loop and the init command can only be ran one time
+func initialize()
     player.alert("Initializing...")
-    while true do -- otherwise it could spawn too much concurrent processes
+    if NOT init then return end
+    while init do
         market.sellAllItem()
-        task.wait(0.1)
+        if drone.canHarvest() then drone.harvest() end
+        task.wait(0.05)
     end
+    return
 end
 
 func buySeedsOnRefresh()
@@ -73,16 +76,10 @@ func buyGearsOnRefresh()
         end
         
         config[13][g.Name] += boughtThisRestock
-        if boughtThisRestock > 0 then
-            config[13].Appeared[g.Name] += 1
-        end
+        if boughtThisRestock > 0 then config[13].Appeared[g.Name] += 1 end
         
-        if boughtThisRestock > config[13].MaxStock[g.Name] then
-            config[13].MaxStock[g.Name] = boughtThisRestock
-        end
-        if boughtThisRestock < config[13].MinStock[g.Name] then
-            config[13].MinStock[g.Name] = boughtThisRestock
-        end
+        if boughtThisRestock > config[13].MaxStock[g.Name] then config[13].MaxStock[g.Name] = boughtThisRestock end
+        if boughtThisRestock < config[13].MinStock[g.Name] then config[13].MinStock[g.Name] = boughtThisRestock end
     end
     cache.set("GS", "D")
     buyingGears = false
@@ -94,6 +91,7 @@ end)
 
 player.chatted:connect(func(message)
     if message == "!init" then
+        init = NOT init
 		initialize()
     end
 end)
@@ -122,9 +120,7 @@ while true do
         config[11] = false
     end
     if st == "P" then
-        if seedBudget > 0 then
-            seedBudget = farming[12](null, seedBudget)
-        end
+        if seedBudget > 0 then seedBudget = farming[12](null, seedBudget) end
         nextPlantOrActive(seedBudget)
     elseif st == "A" AND config[21] then
         varol didWork, nextSeedBudget = farming[6](seedBudget, true)

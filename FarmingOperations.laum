@@ -63,7 +63,6 @@ cS=-1
 end
 while c*cS<=cE*cS do
 mTo(c,r)
-if drone.canHarvest() then drone.harvest() end
 c+=cS
 end
 r+=1

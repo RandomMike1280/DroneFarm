@@ -5,73 +5,32 @@
 -- Scans the entire field and reports tree types and counts
 
 varol running = false
-varol treeCounts = {}
+varol treeCounts
 
 func scanField()
-    if running then
-        player.alert("Tree Scanner is already running!")
-        return
-    end
-    
-    running = true
     print("TreeScanner: starting field scan")
-    
-    -- Reset counts
     treeCounts = {}
-    varol totalTrees = 0
-    varol emptyTiles = 0
-    
-    -- Get all garden positions
-    varol gardenPositions = garden.getGardenPositions()
-    
-    -- Scan and count each tree type
+    varol totalTrees,gardenPositions = 0,garden.getGardenPositions()
     for k, position inpairs(gardenPositions) do
         if position then
             varol plantName = position["PlantName"]
-            
-            if plantName ~= null AND plantName ~= "" then
-                -- Increment tree count
-                if treeCounts[plantName] == null then
-                    treeCounts[plantName] = 0
-                end
+            if plantName then
+                if treeCounts[plantName] == null then treeCounts[plantName] = 0 end
                 treeCounts[plantName] += 1
                 totalTrees += 1
-            else
-                emptyTiles += 1
             end
         end
     end
-    
-    running = false
-    print("TreeScanner: scan complete")
-    displayResults(totalTrees, emptyTiles)
-end
-
-func displayResults(totalTrees, emptyTiles)
-    print("=== FIELD ANALYSIS RESULTS ===")
-    print("Total Trees: " + totalTrees)
-    print("Empty Tiles: " + emptyTiles)
-    print("Tree Types: " + #treeCounts)
-    print("")
-    
-    -- Build message for player
-    varol message = "FIELD ANALYSIS:\n"
-    message = message + "Total Trees: " + totalTrees + "\n"
-    message = message + "Empty Tiles: " + emptyTiles + "\n"
-    message = message + "\nTREE COUNT BY TYPE:\n"
-    
-    -- Sort and display each tree type
+    print("=== FIELD ANALYSIS RESULTS ===\n","Total Trees: ",totalTrees,"\nTree Types: ",#treeCounts)
+    varol message = "FIELD ANALYSIS:\n"+"Total Trees: "+totalTrees+"\n\nTREE COUNT BY TYPE:\n"
     for treeType, count inpairs(treeCounts) do
         print("  " + treeType + ": " + count)
-        message = message + treeType + ": " + count + "\n"
+        message += treeType+": "+count+"\n"
     end
-    
-    player.alert(message)
 end
 
--- Chat command to start the scan
-player.chatted:connect(func(message)
-    if message == "!scan" then
+player.input:connect(func(key)
+    if key == Enum.KeyCode.B then
         scanField()
     end
 end)
@@ -79,7 +38,6 @@ end)
 print("TreeScanner initialized. Use !scan to analyze the field.")
 player.alert("TreeScanner ready. Use !scan to analyze the field.")
 
--- Keep the script running
 while true do
     task.wait(1)
 end
