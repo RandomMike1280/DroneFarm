@@ -77,13 +77,6 @@ market.changedSeedStock:connect(func()
 	buySeedsOnRefresh()
 end)
 
-playerV2.clicked:connect(func(button, x, z)
-	if delM then
-		player.alert("Queueing to remove plant at ("+x+","+z+")")
-		list.insert(cropQueue,{x,z})
-	end
-end)
-
 --[[
 Plant removal is unvailable due to error
 >> Initiating...
@@ -101,9 +94,9 @@ Script execution stopped.
 Due to the incompleteness of the interpreter, no error is provided and only an empty error was provided
 But i believe it is because cropQueue is modified while if list.check(cropQueue) also access or use it in someway
 ]]
-player.input:connect(func(inp)
-	if inp == Enum.KeyCode.LeftBracket then
-		player.alert("Initializing...")
+player.input:connect(func(inp)  -- One :connect event trigger cannot be spawned multiple time it seems
+	if inp == Enum.KeyCode.LeftBracket then -- So fork bomb cannot be done with this
+		player.alert("Initializing...") -- And to have multiple concurrent processes multiple event calls are needed
 		while true do
 			-- market.sellAllItem()
 			-- if list.check(cropQueue) AND drone.getPositionX==cropQueue[#cropQueue][1] AND drone.getPositionZ==cropQueue[#cropQueue][2] then
@@ -115,13 +108,6 @@ player.input:connect(func(inp)
 			if drone.canHarvest() then drone.harvest() end
 			task.wait(0.01)
 		end
-	end
-end)
-
-player.input:connect(func(inp) -- One :connect event trigger cannot be spawned multiple time it seems
-	if inp == Enum.KeyCode.Delete then -- So fork bomb cannot be done with this
-		delM = NOT delM -- And to have multiple concurrent processes multiple event calls are needed
-		player.alert("Delete mode"+delM)
 	end
 end)
 
