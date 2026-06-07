@@ -1,5 +1,5 @@
 --!ndrone
--- @version 1.0.3
+-- @version 1.0.4
 -- ============================================================
 -- AUTOMATION5 - Entry Point
 -- ============================================================
@@ -21,8 +21,7 @@ commands[4]()
 
 -- === MARKET REFRESH HANDLERS ===
 
-varol buyingSeeds, buyingGears, init = false, false, false
-varol passCount = 0
+varol buyingSeeds,buyingGears,init,passCount = false, false, false, 0
 
 cache.set("S", "F")
 cache.set("SS", "I")
@@ -31,7 +30,7 @@ cache.set("C", "")
 
 func initialize()
     player.alert("Initializing...")
-    if NOT init then return end
+    if init then return end
     while init do
         market.sellAllItem()
         if drone.canHarvest() then drone.harvest() end
@@ -89,9 +88,9 @@ market.changedSeedStock:connect(func()
     buySeedsOnRefresh()
 end)
 
-player.chatted:connect(func(message)
-    if message == "!init" then
-        init = NOT init
+player.input:connect(func(inp)
+    if inp == Enum.KeyCode.LeftBracket then
+        init = true
 		initialize()
     end
 end)
@@ -111,8 +110,7 @@ func nextPlantOrActive(seedBudget)
 end
 
 while true do
-    varol seedBudget = farming[10](config[3])
-    varol st = cache.get("S")
+    varol seedBudget, st = farming[10](config[3]), cache.get("S")
     if st == null then st = "F" end
     if cache.get("C") == "SCAN" OR config[11] then
         st = "F"
@@ -144,7 +142,6 @@ while true do
     -- Check for pending seed switch after sweep
     if config[9] then
         config[3] = config[9]
-        farming[7](config[9])
         farming[8]()
         config[9] = null
     end
