@@ -1,5 +1,5 @@
 --!ndrone
--- @version 1.0.4
+-- @version 1.0.5
 -- ============================================================
 -- AUTOMATION5 - Entry Point
 -- ============================================================
@@ -21,7 +21,7 @@ commands[4]()
 
 -- === MARKET REFRESH HANDLERS ===
 
-varol buyingSeeds,buyingGears,init,passCount,delM = false, false, false, 0, false
+varol buyingSeeds,buyingGears,passCount,delM,cropQueue = false, false, 0, false, {}
 
 cache.set("S", "F")
 cache.set("SS", "I")
@@ -29,128 +29,140 @@ cache.set("GS", "I")
 cache.set("C", "")
 
 func buySeedsOnRefresh()
-    if buyingSeeds then return end
-    buyingSeeds = true
-    cache.set("SS", "B")
-    print(task.date() + ": seed market refreshed; buying seeds")
-    farming[3]()
-    cache.set("SS", "D")
-    cache.set("S", "P")
-    buyingSeeds = false
-    commands[5]()
+	if buyingSeeds then return end
+	buyingSeeds = true
+	cache.set("SS", "B")
+	print(task.date() + ": seed market refreshed; buying seeds")
+	farming[3]()
+	cache.set("SS", "D")
+	cache.set("S", "P")
+	buyingSeeds = false
+	commands[5]()
 end
 
 func buyGearsOnRefresh()
-    if buyingGears then return end
-    buyingGears = true
-    cache.set("GS", "B")
-    print(task.date() + ": gear market refreshed; buying gears")
-    config[13].Restocks += 1
-    varol gears = {
-        {["Enum"] = Enum.Gear.Watering_Can, ["Name"] = "Watering_Can"},
-        {["Enum"] = Enum.Gear.Fertilizer, ["Name"] = "Fertilizer"},
-        {["Enum"] = Enum.Gear.Lightning_Rod, ["Name"] = "Lightning_Rod"},
-        {["Enum"] = Enum.Gear.Sprinkler, ["Name"] = "Sprinkler"},
-        {["Enum"] = Enum.Gear.SprinklerV2, ["Name"] = "SprinklerV2"},
-        {["Enum"] = Enum.Gear.SprinklerV3, ["Name"] = "SprinklerV3"}
-    }
-    for _, g inpairs(gears) do
-        varol boughtThisRestock, maxBuys = 0, 20
-        while maxBuys > 0 do
-            if market.buyGear(g.Enum) == false then break end
-            boughtThisRestock += 1
-            maxBuys -= 1
-            task.wait(0.05)
-        end
-        
-        config[13][g.Name] += boughtThisRestock
-        if boughtThisRestock > 0 then config[13].Appeared[g.Name] += 1 end
-        
-        if boughtThisRestock > config[13].MaxStock[g.Name] then config[13].MaxStock[g.Name] = boughtThisRestock end
-        if boughtThisRestock < config[13].MinStock[g.Name] then config[13].MinStock[g.Name] = boughtThisRestock end
-    end
-    cache.set("GS", "D")
-    buyingGears = false
+	if buyingGears then return end
+	buyingGears = true
+	cache.set("GS", "B")
+	print(task.date() + ": gear market refreshed; buying gears")
+	config[13].Restocks += 1
+	varol gears = {
+		{["Enum"] = Enum.Gear.Watering_Can, ["Name"] = "Watering_Can"},
+		{["Enum"] = Enum.Gear.Fertilizer, ["Name"] = "Fertilizer"},
+		{["Enum"] = Enum.Gear.Lightning_Rod, ["Name"] = "Lightning_Rod"},
+		{["Enum"] = Enum.Gear.Sprinkler, ["Name"] = "Sprinkler"},
+		{["Enum"] = Enum.Gear.SprinklerV2, ["Name"] = "SprinklerV2"},
+		{["Enum"] = Enum.Gear.SprinklerV3, ["Name"] = "SprinklerV3"}
+	}
+	for _, g inpairs(gears) do
+		varol boughtThisRestock, maxBuys = 0, 20
+		while maxBuys > 0 do
+			if market.buyGear(g.Enum) == false then break end
+			boughtThisRestock += 1
+			maxBuys -= 1
+			task.wait(0.05)
+		end
+		
+		config[13][g.Name] += boughtThisRestock
+		if boughtThisRestock > 0 then config[13].Appeared[g.Name] += 1 end
+		
+		if boughtThisRestock > config[13].MaxStock[g.Name] then config[13].MaxStock[g.Name] = boughtThisRestock end
+		if boughtThisRestock < config[13].MinStock[g.Name] then config[13].MinStock[g.Name] = boughtThisRestock end
+	end
+	cache.set("GS", "D")
+	buyingGears = false
 end
 
 market.changedSeedStock:connect(func()
-    buySeedsOnRefresh()
+	buySeedsOnRefresh()
 end)
 
 playerV2.clicked:connect(func(button, x, z)
-    if delM then
-        while drone.getPositionX()~=x AND drone.getPositionZ()~=z do
-            task.wait(0.01) 	
-        end
-        drone.crop()
-    end
+	if delM then
+		player.alert("Queueing to remove plant at ("+x+","+z+")")
+		list.insert(cropQueue,{x,z})
+	end
 end)
 
 player.input:connect(func(inp)
-    if inp == Enum.KeyCode.LeftBracket then
-    	init = true
-        player.alert("Initializing...")
-        if init then return end
-        while true do
-            market.sellAllItem()
-            if drone.canHarvest() then drone.harvest() end
-            task.wait(0.01)
-        end
-    elseif inp == Enum.KeyCode.Delete then
-        delM = NOT delM
-    end
+	if inp == Enum.KeyCode.LeftBracket then
+		player.alert("Initializing...")
+		while true do
+			market.sellAllItem()
+			if drone.canHarvest() then drone.harvest() end
+			task.wait(0.01)
+		end
+	end
+end)
+
+player.input:connect(func(inp)
+	if inp == Enum.KeyCode.KeypadMinus then
+		for x,z inpairs(cropQueue) do
+			while drone.getPositionX()~= x AND drone.getPositionZ()~= z do
+				task.wait(0.01)
+			end
+			drone.crop()
+		end
+	end
+end)
+
+player.input:connect(func(inp) -- One :connect event trigger cannot be spawned multiple time it seems
+	if inp == Enum.KeyCode.Delete then -- So fork bomb cannot be done with this
+		delM = NOT delM -- And to have multiple concurrent processes multiple event calls are needed
+		player.alert("Delete mode"+delM)
+	end
 end)
 
 market.changedGearStock:connect(func()
-    buyGearsOnRefresh()
+	buyGearsOnRefresh()
 end)
 
 -- === MAIN LOOP ===
 
 func nextPlantOrActive(seedBudget)
-    if seedBudget > 0 AND farming[13]() > 0 then
-        cache.set("S", "P")
-    else
-        cache.set("S", "A")
-    end
+	if seedBudget > 0 AND farming[13]() > 0 then
+		cache.set("S", "P")
+	else
+		cache.set("S", "A")
+	end
 end
 
 while true do
-    varol seedBudget, st = farming[10](config[3]), cache.get("S")
-    if st == null then st = "F" end
-    if cache.get("C") == "SCAN" OR config[11] then
-        st = "F"
-        cache.set("C", "")
-        config[11] = false
-    end
-    if st == "P" then
-        if seedBudget > 0 then seedBudget = farming[12](null, seedBudget) end
-        nextPlantOrActive(seedBudget)
-    elseif st == "A" AND config[21] then
-        varol didWork, nextSeedBudget = farming[6](seedBudget, true)
-        seedBudget = nextSeedBudget
-        passCount += 1
-        if seedBudget > 0 AND farming[13]() > 0 then
-            cache.set("S", "P")
-        elseif passCount >= config[20] then
-            cache.set("S", "F")
-        else
-            cache.set("S", "A")
-        end
-    else
-        farming[9]()
-        varol didWork, nextSeedBudget = farming[6](seedBudget, true)
-        seedBudget = nextSeedBudget
-        passCount = 0
-        nextPlantOrActive(seedBudget)
-    end
+	varol seedBudget, st = farming[10](config[3]), cache.get("S")
+	if st == null then st = "F" end
+	if cache.get("C") == "SCAN" OR config[11] then
+		st = "F"
+		cache.set("C", "")
+		config[11] = false
+	end
+	if st == "P" then
+		if seedBudget > 0 then seedBudget = farming[12](null, seedBudget) end
+		nextPlantOrActive(seedBudget)
+	elseif st == "A" AND config[21] then
+		varol didWork, nextSeedBudget = farming[6](seedBudget, true)
+		seedBudget = nextSeedBudget
+		passCount += 1
+		if seedBudget > 0 AND farming[13]() > 0 then
+			cache.set("S", "P")
+		elseif passCount >= config[20] then
+			cache.set("S", "F")
+		else
+			cache.set("S", "A")
+		end
+	else
+		farming[9]()
+		varol didWork, nextSeedBudget = farming[6](seedBudget, true)
+		seedBudget = nextSeedBudget
+		passCount = 0
+		nextPlantOrActive(seedBudget)
+	end
 
-    -- Check for pending seed switch after sweep
-    if config[9] then
-        config[3] = config[9]
-        farming[8]()
-        config[9] = null
-    end
-    
-    task.wait(0.1)
+	-- Check for pending seed switch after sweep
+	if config[9] then
+		config[3] = config[9]
+		farming[8]()
+		config[9] = null
+	end
+	
+	task.wait(0.1)
 end
