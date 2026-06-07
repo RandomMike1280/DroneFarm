@@ -31,10 +31,10 @@ cache.set("C", "")
 func initialize()
     player.alert("Initializing...")
     if init then return end
-    while init do
+    while true do
         market.sellAllItem()
         if drone.canHarvest() then drone.harvest() end
-        task.wait(0.05)
+        task.wait(0.01)
     end
     return
 end
@@ -88,10 +88,17 @@ market.changedSeedStock:connect(func()
     buySeedsOnRefresh()
 end)
 
+playerV2.clicked:connect(func(button, x, z)
+    while drone.getPositionX~=x AND drone.getPositionZ~=z do
+   	task.wait(0.01) 	
+    end
+    drone.crop()
+end)
+
 player.input:connect(func(inp)
     if inp == Enum.KeyCode.LeftBracket then
+    	init = true
         initialize()
-        init = true
     end
 end)
 
