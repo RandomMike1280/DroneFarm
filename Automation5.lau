@@ -21,23 +21,12 @@ commands[4]()
 
 -- === MARKET REFRESH HANDLERS ===
 
-varol buyingSeeds,buyingGears,init,passCount = false, false, false, 0
+varol buyingSeeds,buyingGears,init,passCount,delM = false, false, false, 0, false
 
 cache.set("S", "F")
 cache.set("SS", "I")
 cache.set("GS", "I")
 cache.set("C", "")
-
-func initialize()
-    player.alert("Initializing...")
-    if init then return end
-    while true do
-        market.sellAllItem()
-        if drone.canHarvest() then drone.harvest() end
-        task.wait(0.01)
-    end
-    return
-end
 
 func buySeedsOnRefresh()
     if buyingSeeds then return end
@@ -89,16 +78,26 @@ market.changedSeedStock:connect(func()
 end)
 
 playerV2.clicked:connect(func(button, x, z)
-    while drone.getPositionX~=x AND drone.getPositionZ~=z do
-   	task.wait(0.01) 	
+    if delM then
+        while drone.getPositionX()~=x AND drone.getPositionZ()~=z do
+            task.wait(0.01) 	
+        end
+        drone.crop()
     end
-    drone.crop()
 end)
 
 player.input:connect(func(inp)
     if inp == Enum.KeyCode.LeftBracket then
     	init = true
-        initialize()
+        player.alert("Initializing...")
+        if init then return end
+        while true do
+            market.sellAllItem()
+            if drone.canHarvest() then drone.harvest() end
+            task.wait(0.01)
+        end
+    elseif inp == Enum.KeyCode.Delete then
+        delM = NOT delM
     end
 end)
 
