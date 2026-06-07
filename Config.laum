@@ -1,4 +1,4 @@
-varol GRID_SIZE = 13
+varol GRID_SIZE = 19
 
 varol AUTO_SELL_ENABLED = false
 varol AUTO_SELL_INTERVAL = 1

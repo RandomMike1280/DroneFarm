@@ -1,5 +1,5 @@
 --!ndrone
--- @version 1.0.5
+-- @version 1.0.7
 -- ============================================================
 -- AUTOMATION5 - Entry Point
 -- ============================================================
@@ -84,24 +84,36 @@ playerV2.clicked:connect(func(button, x, z)
 	end
 end)
 
+--[[
+Plant removal is unvailable due to error
+>> Initiating...
+Automation5.lua: starting
+Config.laum: finished first execution
+Automation5.lua: got config
+Automation5.lua: got movement
+Automation5.lua: got farming
+Automation5.lua: got commands, initializing
+2026-06-07 10:08:23: seed market refreshed; buying seeds
+2026-06-07 10:08:38: gear market refreshed; buying gears
+ERROR:
+Script execution stopped.
+
+Due to the incompleteness of the interpreter, no error is provided and only an empty error was provided
+But i believe it is because cropQueue is modified while if list.check(cropQueue) also access or use it in someway
+]]
 player.input:connect(func(inp)
 	if inp == Enum.KeyCode.LeftBracket then
 		player.alert("Initializing...")
 		while true do
-			market.sellAllItem()
+			-- market.sellAllItem()
+			-- if list.check(cropQueue) AND drone.getPositionX==cropQueue[#cropQueue][1] AND drone.getPositionZ==cropQueue[#cropQueue][2] then
+			-- 	drone.crop()
+			-- 	cropQueue[#cropQueue] = null
+			-- else				
+			-- 	if drone.canHarvest() then drone.harvest() end
+			-- end
 			if drone.canHarvest() then drone.harvest() end
 			task.wait(0.01)
-		end
-	end
-end)
-
-player.input:connect(func(inp)
-	if inp == Enum.KeyCode.KeypadMinus then
-		for x,z inpairs(cropQueue) do
-			while drone.getPositionX()~= x AND drone.getPositionZ()~= z do
-				task.wait(0.01)
-			end
-			drone.crop()
 		end
 	end
 end)
