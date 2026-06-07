@@ -90,8 +90,8 @@ end)
 
 player.input:connect(func(inp)
     if inp == Enum.KeyCode.LeftBracket then
+        initialize()
         init = true
-		initialize()
     end
 end)
 
