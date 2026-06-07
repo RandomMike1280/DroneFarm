@@ -1,18 +1,55 @@
-player.chatted:connect(func(message)
-    if message == "!remove" then
-        varol x, z = player.getCurrentTile()
-        
-        if x ~= null then
-            droneV2.goto(x, z)
-            drone.crop()
-            player.alert("Cropped tile at X: " + x + " Z: " + z)
-        else
-            player.alert("You are not standing on a tile!")
-        end
+--!ndrone
+
+varol enabled = true
+varol cropping = false
+varol TOGGLE_KEY = Enum.KeyCode.K
+
+func waitDrone()
+    while drone.status() ~= Enum.DroneStatus.Sleep do
+        task.wait(0.03)
+    end
+end
+
+func isLeftClick(button)
+    if button == Enum.ClickType.Left then return true end
+    if button == "Left" then return true end
+    if button == "LeftClick" then return true end
+    return false
+end
+
+func cropClickedTile(x, z)
+    if cropping then return end
+    if x == null OR z == null then return end
+
+    cropping = true
+    waitDrone()
+    droneV2.goto(x, z)
+    waitDrone()
+    drone.crop()
+    waitDrone()
+    player.alert("Cropped tile at X: " + x + " Z: " + z)
+    cropping = false
+end
+
+playerV2.clicked:connect(func(button, x, z)
+    if enabled == false then return end
+    if isLeftClick(button) == false then return end
+    cropClickedTile(x, z)
+end)
+
+player.input:connect(func(key)
+    if key ~= TOGGLE_KEY then return end
+
+    enabled = NOT enabled
+    if enabled then
+        player.alert("Click crop enabled")
+    else
+        player.alert("Click crop paused")
     end
 end)
 
--- Keep the script running to listen for chat commands
+player.alert("Click crop enabled. Press K to pause/resume.")
+
 while true do
     task.wait(1)
 end

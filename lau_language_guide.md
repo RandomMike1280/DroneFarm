@@ -232,7 +232,7 @@ An event has three parts:
 *   The listener type after the colon, such as `:connect` or `:once`.
 *   The callback function, such as `func(message) ... end`.
 
-Event callbacks run immediately when the event is triggered. In observed behavior, callbacks from events such as `market.changedSeedStock` and `player.chatted` do not wait for the main program loop to reach them. They run in a separate execution thread, which means events can be used for true parallel-style processing: market buying, hotkeys, command flags, and other reactive work can happen while the main farming loop continues.
+Event callbacks run immediately when the event is triggered. In observed behavior, callbacks from events such as `market.changedSeedStock` and `player.chatted` do not wait for the main program loop to reach them. They run in a separate pseudo-thread, which means events can be used for parallel-style reactive processing: market buying, hotkeys, command flags, and other reactive work can happen while the main farming loop continues.
 
 Because event callbacks can run concurrently with the main loop, protect shared state with simple guard flags when the callback performs work that can overlap.
 
@@ -287,6 +287,20 @@ end)
 ```
 
 This separate-thread behavior is powerful, but it also means physical drone actions can conflict if multiple callbacks and the main loop command the drone at the same time. Prefer using events to set flags or trigger non-movement work unless the callback owns the full action sequence.
+
+### Event Concurrency Limits
+Lau does not have a mutex lock primitive. There is no built-in `lock`, `mutex`, or atomic section for protecting shared state. Use simple boolean flags when you need to prevent overlapping work.
+
+Each event listener appears to allow only one active callback instance at a time. For example:
+```lau
+some_event:connect(func(n)
+    -- do something slow
+end)
+```
+
+If `some_event` triggers once and the callback is still running, triggering that same event again will not start a second copy of the same callback until the first callback finishes. In other words, each event can spawn only one pseudo-thread at a time.
+
+This means event callbacks are parallel relative to the main loop, but not infinitely re-entrant per event listener. If you need repeatable work, keep callbacks short, set module-level flags, and let the main loop or a service step do the long-running processing.
 
 ### Player Input Event
 `player.input:connect` listens to keyboard input and passes the pressed key as an `Enum.KeyCode` value:
