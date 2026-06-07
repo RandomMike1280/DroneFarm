@@ -98,7 +98,7 @@ player.input:connect(func(inp)  -- One :connect event trigger cannot be spawned 
 	if inp == Enum.KeyCode.LeftBracket then -- So fork bomb cannot be done with this
 		player.alert("Initializing...") -- And to have multiple concurrent processes multiple event calls are needed
 		while true do
-			-- market.sellAllItem()
+			market.sellAllItem()
 			-- if list.check(cropQueue) AND drone.getPositionX==cropQueue[#cropQueue][1] AND drone.getPositionZ==cropQueue[#cropQueue][2] then
 			-- 	drone.crop()
 			-- 	cropQueue[#cropQueue] = null
