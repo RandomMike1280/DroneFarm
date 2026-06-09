@@ -4,7 +4,7 @@ func init(cfgRef)
 end
 
 func moveTo(tx, tz)
-    while drone.status() ~= Enum.DroneStatus.Sleep do task.wait(0.01) end
+    while drone.status() ~= Enum.DroneStatus.Sleep do task.wait(0.05) end
     if lx == tx AND lz == tz then return end
     droneV2.goto(tx, tz)
     lx=tx
